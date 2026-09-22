@@ -149,6 +149,85 @@ DROP POLICY IF EXISTS "Allow public insert alerts" ON public.academic_alerts;
 CREATE POLICY "Allow public insert alerts" ON public.academic_alerts FOR ALL USING (true);
 
 -- =========================================================================
+-- DATABASE FUNCTIONS & TRIGGERS (Automated Business Logic)
+-- =========================================================================
+
+-- 1. Automatic updated_at timestamp trigger function
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_students_updated_at ON public.students;
+CREATE TRIGGER trigger_students_updated_at
+    BEFORE UPDATE ON public.students
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+-- 2. Automatic student attendance rate recalculator trigger function
+CREATE OR REPLACE FUNCTION public.recalculate_student_attendance()
+RETURNS TRIGGER AS $$
+DECLARE
+    target_student VARCHAR(20);
+    total_sessions INT;
+    attended_sessions INT;
+    calculated_rate NUMERIC(5,2);
+BEGIN
+    target_student := COALESCE(NEW.student_number, OLD.student_number);
+
+    -- Calculate total sessions and attended sessions for this student
+    SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'Attended' OR status = 'Excused')
+    INTO total_sessions, attended_sessions
+    FROM public.attendance_records
+    WHERE student_number = target_student;
+
+    IF total_sessions > 0 THEN
+        calculated_rate := ROUND((attended_sessions::NUMERIC / total_sessions::NUMERIC) * 100, 2);
+    ELSE
+        calculated_rate := 100.00;
+    END IF;
+
+    -- Update student overall attendance score
+    UPDATE public.students
+    SET overall_attendance = calculated_rate,
+        updated_at = NOW()
+    WHERE student_number = target_student;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_recalculate_attendance ON public.attendance_records;
+CREATE TRIGGER trigger_recalculate_attendance
+    AFTER INSERT OR UPDATE OR DELETE ON public.attendance_records
+    FOR EACH ROW
+    EXECUTE FUNCTION public.recalculate_student_attendance();
+
+-- 3. Stored RPC Function: Get complete student academic & attendance summary
+CREATE OR REPLACE FUNCTION public.get_student_analytics(p_student_number VARCHAR)
+RETURNS JSON AS $$
+DECLARE
+    result JSON;
+BEGIN
+    SELECT json_build_object(
+        'student', (SELECT row_to_json(s) FROM public.students s WHERE s.student_number = p_student_number),
+        'total_attendance_records', (SELECT COUNT(*) FROM public.attendance_records WHERE student_number = p_student_number),
+        'attended_count', (SELECT COUNT(*) FROM public.attendance_records WHERE student_number = p_student_number AND status = 'Attended'),
+        'absent_count', (SELECT COUNT(*) FROM public.attendance_records WHERE student_number = p_student_number AND status = 'Absent'),
+        'alerts_count', (SELECT COUNT(*) FROM public.academic_alerts WHERE student_number = p_student_number)
+    ) INTO result;
+
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Grant execution permissions for anon role
+GRANT EXECUTE ON FUNCTION public.get_student_analytics(VARCHAR) TO anon, authenticated, service_role;
+
+-- =========================================================================
 -- SEED INITIAL MOCK DATA
 -- =========================================================================
 INSERT INTO public.students (student_number, name, email, qualification, campus, risk_status, risk_score, overall_attendance, popi_consented, popi_allowed_stakeholders)

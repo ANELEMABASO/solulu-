@@ -134,7 +134,7 @@ export const PopiDataProtectionModal: React.FC<PopiDataProtectionModalProps> = (
   isOpen,
   onClose,
   onConsentSaved,
-  studentName = 'Mabaso Cele',
+  studentName = 'Maya Chen',
   studentNumber = '67204918',
 }) => {
   const [selectedStakeholders, setSelectedStakeholders] = useState<string[]>(

@@ -314,3 +314,60 @@ export async function fetchStudentAttendanceFromSupabase(
     return [];
   }
 }
+
+/**
+ * Calls the PostgreSQL stored RPC function to get full student analytics.
+ */
+export async function fetchStudentAnalyticsFromSupabase(studentNumber: string) {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client.rpc('get_student_analytics', {
+      p_student_number: studentNumber,
+    });
+
+    if (error) {
+      console.warn('RPC get_student_analytics error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('Failed to call get_student_analytics RPC:', err);
+    return null;
+  }
+}
+
+/**
+ * Exports a JSON snapshot backup of the key database tables for local backup.
+ */
+export async function exportDatabaseBackupFromSupabase() {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    const [students, modules, attendance, popi, alerts] = await Promise.all([
+      client.from('students').select('*'),
+      client.from('modules').select('*'),
+      client.from('attendance_records').select('*'),
+      client.from('popi_consents').select('*'),
+      client.from('academic_alerts').select('*'),
+    ]);
+
+    return {
+      timestamp: new Date().toISOString(),
+      project: 'wjjsljkwgknsrxkrajvm',
+      data: {
+        students: students.data || [],
+        modules: modules.data || [],
+        attendance_records: attendance.data || [],
+        popi_consents: popi.data || [],
+        academic_alerts: alerts.data || [],
+      },
+    };
+  } catch (err) {
+    console.error('Failed to export backup snapshot:', err);
+    return null;
+  }
+}
+
