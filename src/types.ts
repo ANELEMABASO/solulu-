@@ -14,6 +14,7 @@ export type LecturerScreen =
   | 'overview'
   | 'courses'
   | 'students'
+  | 'calendar'
   | 'teachers'
   | 'exam'
   | 'result'
