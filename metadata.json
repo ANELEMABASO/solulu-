@@ -1,0 +1,6 @@
+{
+  "name": "myUNISA Learning Portal",
+  "description": "Official myUnisa Learning Portal and Attendance Management system powered by the Salulu AI Agent, featuring UNISA Burgundy, Amber login actions, and student/lecturer dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

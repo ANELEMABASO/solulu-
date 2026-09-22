@@ -1,0 +1,227 @@
+import React, { useState } from 'react';
+import { Role, StudentScreen } from './types';
+import { LoginScreen } from './components/LoginScreen';
+import { StudentSidebar } from './components/StudentSidebar';
+import { StudentHeader } from './components/StudentHeader';
+import { LecturerPortal } from './components/LecturerPortal';
+import { SaluluPanel } from './components/SaluluPanel';
+import {
+  StudentOverviewView,
+  StudentModulesView,
+  StudentModuleDetailView,
+  StudentScheduleView,
+  StudentProgressView,
+  StudentMessagesView,
+} from './components/StudentViews';
+import { StudentCalendarView } from './components/StudentCalendarView';
+import {
+  LessonModal,
+  WorksheetModal,
+  AssignmentModal,
+} from './components/Modals';
+import { Sparkles, X } from 'lucide-react';
+
+export function App() {
+  const [role, setRole] = useState<Role | null>(null);
+  const [studentScreen, setStudentScreen] = useState<StudentScreen>('overview');
+  const [selectedModuleCode, setSelectedModuleCode] = useState<string>('CS204');
+  const [isSaluluOpen, setIsSaluluOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Modals
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+  const [isWorksheetModalOpen, setIsWorksheetModalOpen] = useState(false);
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((curr) => (curr === msg ? null : curr));
+    }, 4000);
+  };
+
+  const handleLogin = (selectedRole: Role, destinationPortal?: string) => {
+    setRole(selectedRole);
+    if (selectedRole === 'student') {
+      if (destinationPortal === 'myModules') {
+        setStudentScreen('modules');
+        showToast('Authenticated into myModules LMS via UNISA Single Sign-On.');
+      } else if (destinationPortal === 'myAdmin') {
+        setStudentScreen('progress');
+        showToast('Authenticated into myAdmin Student Records & Examination portal.');
+      } else if (destinationPortal === 'SBL') {
+        setStudentScreen('overview');
+        showToast('Authenticated into UNISA Graduate School of Business Leadership (SBL).');
+      } else {
+        setStudentScreen('overview');
+        showToast('Welcome to myUNISA Learning Portal.');
+      }
+    } else {
+      showToast('Authenticated as Dr. Elena Vasquez · Allocated to Lecturer Attendance & CS204 Portal.');
+    }
+  };
+
+  const handleLogout = () => {
+    setRole(null);
+    setStudentScreen('overview');
+    setIsSaluluOpen(false);
+    showToast('Signed out of myUNISA session successfully.');
+  };
+
+  const handleModuleSelect = (code: string) => {
+    setSelectedModuleCode(code);
+    setStudentScreen('module-detail');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F5F5F5] text-[#333333] font-sans antialiased relative">
+      {/* ── Toast Notification Banner ── */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-[#333333] text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl border-2 border-[#F97316] flex items-center gap-2.5 animate-bounce">
+          <span className="w-2 h-2 rounded-full bg-[#F97316]" />
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-[#AAAAAA] hover:text-white ml-1 text-sm font-bold"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* ── View Router ── */}
+      {!role && <LoginScreen onLogin={handleLogin} />}
+
+      {role === 'lecturer' && (
+        <LecturerPortal
+          onLogout={handleLogout}
+          onOpenSalulu={() => setIsSaluluOpen(true)}
+          onShowToast={showToast}
+        />
+      )}
+
+      {role === 'student' && (
+        <div className="flex h-screen w-screen overflow-hidden">
+          <StudentSidebar
+            currentScreen={studentScreen}
+            onNavigate={(s) => setStudentScreen(s)}
+            onLogout={handleLogout}
+            onOpenSalulu={() => setIsSaluluOpen(true)}
+          />
+
+          <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+            <StudentHeader
+              onOpenSalulu={() => setIsSaluluOpen(true)}
+              onNavigate={(s) => setStudentScreen(s)}
+              currentScreen={studentScreen}
+            />
+
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
+              {studentScreen === 'overview' && (
+                <StudentOverviewView
+                  onSelectModule={handleModuleSelect}
+                  onOpenSchedule={() => setStudentScreen('schedule')}
+                  onOpenCalendar={() => setStudentScreen('calendar')}
+                  onOpenLesson={() => setIsLessonModalOpen(true)}
+                  onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
+                />
+              )}
+
+              {studentScreen === 'calendar' && (
+                <StudentCalendarView
+                  onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
+                  onOpenLesson={() => setIsLessonModalOpen(true)}
+                  onOpenAssignment={() => setIsAssignmentModalOpen(true)}
+                />
+              )}
+
+              {studentScreen === 'modules' && (
+                <StudentModulesView onSelectModule={handleModuleSelect} />
+              )}
+
+              {studentScreen === 'module-detail' && (
+                <StudentModuleDetailView
+                  onBack={() => setStudentScreen('modules')}
+                  onOpenLesson={() => setIsLessonModalOpen(true)}
+                  onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
+                  onOpenAssignment={() => setIsAssignmentModalOpen(true)}
+                />
+              )}
+
+              {studentScreen === 'schedule' && (
+                <StudentScheduleView
+                  onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
+                  onOpenCalendar={() => setStudentScreen('calendar')}
+                />
+              )}
+
+              {studentScreen === 'progress' && <StudentProgressView />}
+
+              {studentScreen === 'messages' && (
+                <StudentMessagesView onOpenSalulu={() => setIsSaluluOpen(true)} />
+              )}
+            </main>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Solulu Elevate Assistant Launcher Button (Available for both Student and Lecturer) */}
+      {role && !isSaluluOpen && (
+        <button
+          id="btn-floating-solulu"
+          onClick={() => setIsSaluluOpen(true)}
+          className="fixed bottom-6 right-6 bg-[#333333] hover:bg-[#222222] text-white p-3.5 rounded-full shadow-2xl border-2 border-[#F97316] flex items-center gap-2.5 hover:scale-105 transition-all z-40 group"
+          title="Open Solulu Elevate AI Assistant"
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#DC2626] to-[#F97316] text-white flex items-center justify-center font-bold text-base shadow-sm">
+            🤖
+          </div>
+          <div className="text-left pr-2 hidden sm:block">
+            <p className="text-xs font-bold leading-tight text-white flex items-center gap-1.5">
+              <span>Solulu Elevate AI</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] agent-pulse" />
+            </p>
+            <p className="text-[10px] text-[#F97316] font-semibold">
+              {role === 'lecturer' ? 'Staff Analytics & Alerts' : 'Academic & Risk Monitor'}
+            </p>
+          </div>
+        </button>
+      )}
+
+      {/* Solulu Elevate Slide-in Panel for both Student and Lecturer */}
+      <SaluluPanel
+        isOpen={isSaluluOpen}
+        onClose={() => setIsSaluluOpen(false)}
+        role={role === 'lecturer' ? 'lecturer' : 'student'}
+        onActionTriggered={(act) => showToast(`Solulu Elevate executed: ${act}`)}
+      />
+
+      {/* ── Modals ── */}
+      {isLessonModalOpen && (
+        <LessonModal
+          onClose={() => setIsLessonModalOpen(false)}
+          onComplete={() => {
+            setIsLessonModalOpen(false);
+            showToast('Week 7 AVL Trees lesson completed. Solulu Elevate logged participation for Dr. Vasquez!');
+          }}
+        />
+      )}
+
+      {isWorksheetModalOpen && (
+        <WorksheetModal
+          onClose={() => setIsWorksheetModalOpen(false)}
+          onSubmit={() => {
+            setIsWorksheetModalOpen(false);
+            showToast('Trees Lab Worksheet submitted. Room C1.08 lab attendance prep confirmed!');
+          }}
+        />
+      )}
+
+      {isAssignmentModalOpen && (
+        <AssignmentModal onClose={() => setIsAssignmentModalOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+export default App;
