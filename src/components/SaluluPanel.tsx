@@ -18,12 +18,15 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { dispatchAcademicAlertToSupabase } from '../lib/supabase';
+import { mcpGmail, DEMO_STUDENT_GMAIL } from '../services/mcpGmailService';
 
 export interface SaluluPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onActionTriggered?: (action: string) => void;
   role?: 'student' | 'lecturer';
+  externalPrompt?: string | null;
+  onClearExternalPrompt?: () => void;
 }
 
 type MessageItem = { kind: 'msg'; id: string; role: 'user' | 'assistant'; content: string; time: string };
@@ -45,6 +48,8 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
   onClose,
   onActionTriggered,
   role = 'student',
+  externalPrompt,
+  onClearExternalPrompt,
 }) => {
   // Initialize dynamic greeting based on role
   const getInitialMessage = (currentRole: 'student' | 'lecturer'): string => {
@@ -55,7 +60,8 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
         "1. **Detect student engagement on your modules** — Real-time tracking of lecture attendance, practical submissions, and online LMS interaction (currently 92% in CS204).\n" +
         "2. **Notify you if you are at risk of failing the module or if you are doing well** — Continuous assessment monitoring and proactive performance warnings.\n" +
         "3. **Schedule consultation sessions with your lecturer** — Direct 1-on-1 booking with Dr. Elena Vasquez and teaching assistants.\n" +
-        "4. **Alert the lecturer that you are struggling academically for support** — Private academic distress signaling for personalized tutoring intervention.\n\n" +
+        "4. **Alert the lecturer that you are struggling academically for support** — Private academic distress signaling for personalized tutoring intervention.\n" +
+        "5. **Read & analyze your student Gmail inbox via Model Context Protocol (MCP)** — Autonomous connection to `maya.chen.student.demo@gmail.com` to inspect lecturer grading feedback, official UNISA exam schedules, and attendance alerts.\n\n" +
         "How can I support your study today?"
       );
     } else {
@@ -107,6 +113,16 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
   }, [timeline, isTyping, isOpen]);
 
   if (!isOpen) return null;
+
+  // Handle external prompt if triggered from UI
+  useEffect(() => {
+    if (isOpen && externalPrompt && externalPrompt.trim()) {
+      handleSendMessage(externalPrompt);
+      if (onClearExternalPrompt) {
+        onClearExternalPrompt();
+      }
+    }
+  }, [isOpen, externalPrompt]);
 
   const handleSendMessage = (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
@@ -270,6 +286,86 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
             label: 'Solulu Elevate WhatsApp Alert Dispatched',
             detail: 'Sent session reminder to +27 82 *** 4910 for 15:30 SAST',
             channel: 'whatsapp',
+          });
+        } else if (
+          lower.includes('gmail') ||
+          lower.includes('email') ||
+          lower.includes('mcp') ||
+          lower.includes('inbox') ||
+          lower.includes('read') ||
+          lower.includes('5.') ||
+          lower.includes('feedback') ||
+          lower.includes('vasquez')
+        ) {
+          mcpGmail.executeMcpTool('gmail.summarize_unread_threads', {
+            account: DEMO_STUDENT_GMAIL,
+            query: 'is:unread',
+          });
+
+          reply =
+            "Solulu Elevate Gmail MCP Intelligence Report 📬:\n" +
+            "I accessed your demo Gmail account (**maya.chen.student.demo@gmail.com**) via the connected **@google/mcp-server-gmail** Model Context Protocol bridge (JSON-RPC 2.0 stdio):\n\n" +
+            "1. **Dr. Elena Vasquez (CS204 Coordinator)** · *Assignment 2 Grading Feedback*\n" +
+            "   • **Result**: **84% (Distinction grade)** on AVL Trees & Dijkstra Graph Traversals.\n" +
+            "   • **Feedback**: Commended for balance factor logic; invited to personal consultation session this **Tuesday at 14:00** in Room C1.08 (Science Campus) for final exam coaching.\n\n" +
+            "2. **UNISA Examinations Directorate** · *Official Exam Timetable Released*\n" +
+            "   • **CS204 Final Exam**: **Thursday, 28 May 2026 @ 09:00 AM CAT**.\n" +
+            "   • **CS201 Final Exam**: **Tuesday, 02 June 2026 @ 09:00 AM CAT**.\n" +
+            "   • **Status**: Your current 84% year mark qualifies you for distinction-tier exam admission. Photo verification required by 15 May.\n\n" +
+            "3. **Solulu Elevate AI Monitor** · *Attendance Verification*\n" +
+            "   • Trees Lab Practical confirmed on Supabase (100% cumulative attendance rate, Low Risk).\n\n" +
+            "4. **Department of Computing** · *Peer Tutoring Session (PASS)*\n" +
+            "   • Dynamic Programming & Memoization Workshop on **Thursday at 14:00**.\n\n" +
+            "⚡ **Next Action**: Would you like me to use the **gmail.create_draft_reply** MCP tool to draft an acceptance reply to Dr. Vasquez, or add the 28 May exam to your calendar?";
+
+          actionsToRun.push({
+            kind: 'action',
+            id: getId(),
+            icon: '⚡',
+            label: 'MCP Tool: gmail.summarize_unread_threads',
+            detail: 'Invoked via JSON-RPC stdio for maya.chen.student.demo@gmail.com (2 unread / 4 total)',
+            channel: 'system',
+          });
+          actionsToRun.push({
+            kind: 'action',
+            id: getId(),
+            icon: '📬',
+            label: 'Student Gmail Synced via MCP',
+            detail: 'Extracted Dr. Vasquez Assignment 2 feedback (84%) & May 28 Exam Schedule',
+            channel: 'email',
+          });
+        } else if (
+          lower.includes('draft') ||
+          lower.includes('reply') ||
+          lower.includes('thank') ||
+          lower.includes('accept')
+        ) {
+          mcpGmail.executeMcpTool('gmail.create_draft_reply', {
+            to: 'e.vasquez@unisa.ac.za',
+            subject: 'Re: CS204: Feedback on Assignment 2 (Graph Traversal & AVL Trees) & Consultation Invitation',
+            body: 'Dear Dr. Vasquez,\n\nThank you very much for grading my Assignment 2 and for the constructive feedback on asymptotic complexity proofs. I am thrilled with the 84% result.\n\nI would be delighted to attend your consultation session this Tuesday at 14:00 in Room C1.08 to review AVL amortized bounds and prepare for the 28 May final exam.\n\nSincerely,\nMaya Chen (67283910)',
+          });
+
+          reply =
+            "Solulu Elevate Draft Reply Dispatched via MCP ✍️:\n" +
+            "I invoked the **gmail.create_draft_reply** MCP tool for your account (`maya.chen.student.demo@gmail.com`):\n\n" +
+            "**To**: Dr. Elena Vasquez <e.vasquez@unisa.ac.za>\n" +
+            "**Subject**: Re: CS204: Feedback on Assignment 2 & Consultation Invitation\n\n" +
+            "```text\n" +
+            "Dear Dr. Vasquez,\n\n" +
+            "Thank you very much for grading my Assignment 2 and for the constructive feedback on asymptotic complexity proofs. I am thrilled with the 84% result.\n\n" +
+            "I would be delighted to attend your consultation session this Tuesday at 14:00 in Room C1.08 to review AVL amortized bounds and prepare for the 28 May final exam.\n\n" +
+            "Sincerely,\nMaya Chen (67283910)\n" +
+            "```\n\n" +
+            "The draft has been saved to your student Gmail account. You can review it directly in the Demo Gmail screen or send it!";
+
+          actionsToRun.push({
+            kind: 'action',
+            id: getId(),
+            icon: '⚡',
+            label: 'MCP Tool: gmail.create_draft_reply',
+            detail: 'Draft saved in maya.chen.student.demo@gmail.com for e.vasquez@unisa.ac.za',
+            channel: 'email',
           });
         } else {
           reply =
@@ -550,12 +646,15 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
     });
   };
 
-  // Student specific quick chips matching the 4 requirements
+  // Student specific quick chips matching the requirements
   const studentChips = [
     '1. 📊 Detect student engagement on my modules',
     '2. ⚠️ Check if I am at risk or doing well',
     '3. 📅 Schedule consultation session with lecturer',
     '4. 🆘 Alert lecturer that I am struggling academically',
+    '5. 📬 Read student Gmail via MCP',
+    'Summarize unread emails (MCP)',
+    'Draft reply to Dr. Vasquez (MCP)',
     'Explain AVL tree rotation rules',
     'Check my Trees Lab attendance status',
   ];
@@ -625,18 +724,22 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
       </div>
 
       {/* ── Active Channels Indicator Bar ── */}
-      <div className="bg-[#F5F5F5] px-4 py-2 border-b border-[#E0E0E0] flex items-center justify-between text-[11px] font-bold text-[#333333] shrink-0">
-        <span className="flex items-center gap-1.5">
+      <div className="bg-[#F5F5F5] px-4 py-2 border-b border-[#E0E0E0] flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-[#333333] shrink-0 gap-1 overflow-x-auto">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-[#25D366] agent-pulse" />
-          <span>WhatsApp Push</span>
+          <span>WhatsApp</span>
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-[#DC2626] agent-pulse" style={{ animationDelay: '0.4s' }} />
-          <span>myLife Email</span>
+          <span>myLife</span>
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-[#F97316] agent-pulse" style={{ animationDelay: '0.8s' }} />
-          <span>LMS Synced</span>
+          <span>LMS</span>
+        </span>
+        <span className="flex items-center gap-1 text-emerald-800 bg-[#E8F5E9] px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Gmail MCP</span>
         </span>
       </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, Sparkles, ShieldCheck } from 'lucide-react';
+import { Search, Bell, Sparkles, ShieldCheck, Mail } from 'lucide-react';
 
 interface StudentHeaderProps {
   title?: string;
@@ -17,6 +17,8 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
   onOpenSalulu,
   onOpenPopiModal,
   onShowToast = () => {},
+  onNavigate,
+  currentScreen,
 }) => {
   return (
     <header className="h-16 bg-white border-b border-[#E0E0E0] px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-xs font-sans">
@@ -45,6 +47,27 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
             className="pl-8.5 pr-3 py-1.5 rounded-full border border-[#CCCCCC] text-xs text-[#333333] w-48 focus:w-60 transition-all focus:outline-none focus:border-[#DC2626] bg-[#F5F5F5]"
           />
         </div>
+
+        {/* Demo Gmail with MCP Active Indicator Button */}
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate('gmail')}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+              currentScreen === 'gmail'
+                ? 'bg-[#DC2626] text-white border border-[#DC2626]'
+                : 'bg-[#F0FDF4] hover:bg-[#DCFCE7] text-emerald-800 border border-[#BBF7D0]'
+            }`}
+            title="Open Student Demo Gmail (maya.chen.student.demo@gmail.com)"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Demo Gmail</span>
+            <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${
+              currentScreen === 'gmail' ? 'bg-white/20 text-white' : 'bg-emerald-200 text-emerald-900'
+            }`}>
+              MCP
+            </span>
+          </button>
+        )}
 
         {/* POPI Act Student Data Protection Status Button */}
         {onOpenPopiModal && (

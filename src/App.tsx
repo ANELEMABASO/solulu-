@@ -14,6 +14,7 @@ import {
   StudentMessagesView,
 } from './components/StudentViews';
 import { StudentCalendarView } from './components/StudentCalendarView';
+import { StudentGmailView } from './components/StudentGmailView';
 import {
   LessonModal,
   WorksheetModal,
@@ -28,6 +29,7 @@ export function App() {
   const [studentScreen, setStudentScreen] = useState<StudentScreen>('overview');
   const [selectedModuleCode, setSelectedModuleCode] = useState<string>('CS204');
   const [isSaluluOpen, setIsSaluluOpen] = useState(false);
+  const [saluluPrompt, setSaluluPrompt] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals
@@ -177,7 +179,20 @@ export function App() {
               {studentScreen === 'progress' && <StudentProgressView />}
 
               {studentScreen === 'messages' && (
-                <StudentMessagesView onOpenSalulu={() => setIsSaluluOpen(true)} />
+                <StudentMessagesView
+                  onOpenSalulu={() => setIsSaluluOpen(true)}
+                  onOpenGmail={() => setStudentScreen('gmail')}
+                />
+              )}
+
+              {studentScreen === 'gmail' && (
+                <StudentGmailView
+                  onOpenSaluluWithPrompt={(prompt) => {
+                    setSaluluPrompt(prompt);
+                    setIsSaluluOpen(true);
+                  }}
+                  onNavigateToCalendar={() => setStudentScreen('calendar')}
+                />
               )}
             </main>
           </div>
@@ -212,6 +227,8 @@ export function App() {
         isOpen={isSaluluOpen}
         onClose={() => setIsSaluluOpen(false)}
         role={role === 'lecturer' ? 'lecturer' : 'student'}
+        externalPrompt={saluluPrompt}
+        onClearExternalPrompt={() => setSaluluPrompt(null)}
         onActionTriggered={(act) => showToast(`Solulu Elevate executed: ${act}`)}
       />
 

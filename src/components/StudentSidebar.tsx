@@ -12,6 +12,7 @@ import {
   LogOut,
   Sparkles,
   ShieldCheck,
+  Mail,
 } from 'lucide-react';
 
 interface StudentSidebarProps {
@@ -36,6 +37,7 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
     { id: 'schedule' as StudentScreen, label: 'Timetable & Labs', icon: Calendar },
     { id: 'progress' as StudentScreen, label: 'Progress & Graphs', icon: BarChart3 },
     { id: 'messages' as StudentScreen, label: 'Messages & Alerts', icon: Inbox },
+    { id: 'gmail' as StudentScreen, label: 'Demo Gmail (MCP)', icon: Mail, badge: 'Live MCP' },
   ];
 
   return (
@@ -63,14 +65,21 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${
                   isActive
                     ? 'bg-[#DC2626] text-white shadow-xs'
                     : 'text-[#CCCCCC] hover:bg-[#444444] hover:text-white'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-extrabold tracking-wide">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}

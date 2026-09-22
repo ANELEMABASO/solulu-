@@ -663,7 +663,8 @@ export const StudentProgressView: React.FC = () => {
 // ── 6. Student Messages Screen ─────────────────────────────────────────────────
 export const StudentMessagesView: React.FC<{
   onOpenSalulu: () => void;
-}> = ({ onOpenSalulu }) => {
+  onOpenGmail?: () => void;
+}> = ({ onOpenSalulu, onOpenGmail }) => {
   const [threads] = useState<MessageThread[]>(INITIAL_THREADS);
   const [selectedThreadId, setSelectedThreadId] = useState(INITIAL_THREADS[0].id);
 
@@ -673,8 +674,17 @@ export const StudentMessagesView: React.FC<{
     <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm overflow-hidden flex flex-col md:flex-row h-[560px]">
       {/* Thread list */}
       <div className="w-full md:w-80 border-r border-[#EAEAEA] bg-[#F5F5F5] flex flex-col">
-        <div className="p-4 border-b border-[#EAEAEA] font-bold text-xs text-[#333333] uppercase tracking-wider">
-          UNISA Communications Hub
+        <div className="p-3.5 border-b border-[#EAEAEA] font-bold text-xs text-[#333333] uppercase tracking-wider flex items-center justify-between">
+          <span>UNISA Communications</span>
+          {onOpenGmail && (
+            <button
+              onClick={onOpenGmail}
+              className="text-[10px] text-emerald-800 bg-[#E8F5E9] hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded font-bold transition-colors cursor-pointer"
+              title="Open Demo Gmail with Model Context Protocol"
+            >
+              Gmail MCP →
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-[#EAEAEA]">
           {threads.map((thread) => {

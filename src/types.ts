@@ -1,6 +1,14 @@
 export type Role = 'student' | 'lecturer';
 
-export type StudentScreen = 'overview' | 'modules' | 'module-detail' | 'schedule' | 'calendar' | 'progress' | 'messages';
+export type StudentScreen =
+  | 'overview'
+  | 'modules'
+  | 'module-detail'
+  | 'schedule'
+  | 'calendar'
+  | 'progress'
+  | 'messages'
+  | 'gmail';
 export type LecturerScreen =
   | 'dashboard'
   | 'overview'
@@ -34,11 +42,41 @@ export interface StudentProfile {
   name: string;
   studentNumber: string;
   email: string;
+  demoGmail?: string;
   degree: string;
   semester: string;
   creditsEarned: number;
   totalCredits: number;
 }
+
+export interface DemoEmail {
+  id: string;
+  from: string;
+  fromName: string;
+  fromAvatar?: string;
+  to: string;
+  subject: string;
+  snippet: string;
+  body: string;
+  date: string;
+  time: string;
+  isUnread: boolean;
+  isStarred?: boolean;
+  category: 'academic' | 'exams' | 'alerts' | 'general';
+  tags?: string[];
+  mcpActionSuggested?: string;
+}
+
+export interface McpToolCallLog {
+  id: string;
+  toolName: string;
+  timestamp: string;
+  parameters: Record<string, any>;
+  status: 'executing' | 'success' | 'error';
+  resultCount?: number;
+  responsePreview?: string;
+}
+
 
 export interface LecturerProfile {
   name: string;
