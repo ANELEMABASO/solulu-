@@ -17,6 +17,7 @@ import {
   Clock,
   GraduationCap,
 } from 'lucide-react';
+import { dispatchAcademicAlertToSupabase } from '../lib/supabase';
 
 export interface SaluluPanelProps {
   isOpen: boolean;
@@ -513,6 +514,30 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
       if (onActionTriggered && actionsToRun.length > 0) {
         onActionTriggered(actionsToRun[0].label);
       }
+
+      // Persist dispatched alerts and actions to Supabase Database
+      actionsToRun.forEach((act) => {
+        dispatchAcademicAlertToSupabase({
+          student_number: '67204918',
+          lecturer_name: 'Dr. Elena Vasquez',
+          module_code: 'CS204',
+          alert_type:
+            act.channel === 'calendar'
+              ? 'consultation'
+              : act.channel === 'whatsapp'
+              ? 'attendance_alert'
+              : 'risk_warning',
+          title: act.label,
+          message: act.detail,
+          status: 'dispatched',
+          channel:
+            act.channel === 'whatsapp'
+              ? 'whatsapp'
+              : act.channel === 'email'
+              ? 'email'
+              : 'portal',
+        }).catch((err) => console.warn('Supabase alert logging notice:', err));
+      });
     }, 700);
   };
 

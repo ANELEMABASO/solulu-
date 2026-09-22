@@ -19,6 +19,8 @@ import {
   WorksheetModal,
   AssignmentModal,
 } from './components/Modals';
+import { PopiDataProtectionModal } from './components/PopiDataProtectionModal';
+import { recordAttendanceToSupabase } from './lib/supabase';
 import { Sparkles, X } from 'lucide-react';
 
 export function App() {
@@ -32,6 +34,7 @@ export function App() {
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [isWorksheetModalOpen, setIsWorksheetModalOpen] = useState(false);
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+  const [isPopiModalOpen, setIsPopiModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -43,6 +46,20 @@ export function App() {
   const handleLogin = (selectedRole: Role, destinationPortal?: string) => {
     setRole(selectedRole);
     if (selectedRole === 'student') {
+      // Auto-trigger POPI Act data protection consent modal if not previously completed
+      try {
+        const existingConsent = localStorage.getItem('unisa_popi_consent_v1');
+        if (!existingConsent) {
+          setTimeout(() => {
+            setIsPopiModalOpen(true);
+          }, 600);
+        }
+      } catch {
+        setTimeout(() => {
+          setIsPopiModalOpen(true);
+        }, 600);
+      }
+
       if (destinationPortal === 'myModules') {
         setStudentScreen('modules');
         showToast('Authenticated into myModules LMS via UNISA Single Sign-On.');
@@ -107,11 +124,13 @@ export function App() {
             onNavigate={(s) => setStudentScreen(s)}
             onLogout={handleLogout}
             onOpenSalulu={() => setIsSaluluOpen(true)}
+            onOpenPopiModal={() => setIsPopiModalOpen(true)}
           />
 
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <StudentHeader
               onOpenSalulu={() => setIsSaluluOpen(true)}
+              onOpenPopiModal={() => setIsPopiModalOpen(true)}
               onNavigate={(s) => setStudentScreen(s)}
               currentScreen={studentScreen}
             />
@@ -202,6 +221,14 @@ export function App() {
           onClose={() => setIsLessonModalOpen(false)}
           onComplete={() => {
             setIsLessonModalOpen(false);
+            recordAttendanceToSupabase({
+              student_number: '67204918',
+              module_code: 'CS204',
+              session_name: 'Week 7 AVL Trees & Tree Balancing Interactive Lesson',
+              session_date: new Date().toISOString().split('T')[0],
+              status: 'Attended',
+              verified_by: 'Dr. Elena Vasquez',
+            }).catch((err) => console.warn('Supabase attendance record notice:', err));
             showToast('Week 7 AVL Trees lesson completed. Solulu Elevate logged participation for Dr. Vasquez!');
           }}
         />
@@ -212,6 +239,14 @@ export function App() {
           onClose={() => setIsWorksheetModalOpen(false)}
           onSubmit={() => {
             setIsWorksheetModalOpen(false);
+            recordAttendanceToSupabase({
+              student_number: '67204918',
+              module_code: 'CS204',
+              session_name: 'Practical Worksheet: AVL Rotations & Rebalancing',
+              session_date: new Date().toISOString().split('T')[0],
+              status: 'Attended',
+              verified_by: 'Dr. Elena Vasquez',
+            }).catch((err) => console.warn('Supabase attendance record notice:', err));
             showToast('Trees Lab Worksheet submitted. Room C1.08 lab attendance prep confirmed!');
           }}
         />
@@ -220,6 +255,23 @@ export function App() {
       {isAssignmentModalOpen && (
         <AssignmentModal onClose={() => setIsAssignmentModalOpen(false)} />
       )}
+
+      {/* ── POPI Act Student Data Protection Consent Pop-up Modal ── */}
+      <PopiDataProtectionModal
+        isOpen={isPopiModalOpen}
+        onClose={() => setIsPopiModalOpen(false)}
+        studentName="Mabaso Cele"
+        studentNumber="67204918"
+        onConsentSaved={(consented, allowedIds) => {
+          if (consented) {
+            showToast(
+              `POPI Act consent recorded: ${allowedIds.length} UNISA stakeholders authorized for academic & student support.`
+            );
+          } else {
+            showToast('POPI Act preference recorded: Non-mandatory stakeholder data access restricted.');
+          }
+        }}
+      />
     </div>
   );
 }

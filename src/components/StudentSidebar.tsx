@@ -11,6 +11,7 @@ import {
   Inbox,
   LogOut,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface StudentSidebarProps {
@@ -18,6 +19,7 @@ interface StudentSidebarProps {
   onNavigate: (screen: StudentScreen) => void;
   onLogout: () => void;
   onOpenSalulu: () => void;
+  onOpenPopiModal?: () => void;
 }
 
 export const StudentSidebar: React.FC<StudentSidebarProps> = ({
@@ -25,6 +27,7 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
   onNavigate,
   onLogout,
   onOpenSalulu,
+  onOpenPopiModal,
 }) => {
   const navItems = [
     { id: 'overview' as StudentScreen, label: 'Overview', icon: LayoutDashboard },
@@ -93,6 +96,25 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
             <span className="text-xs">→</span>
           </button>
         </div>
+
+        {/* POPI Act Student Data Protection Quick Trigger */}
+        {onOpenPopiModal && (
+          <div className="px-3">
+            <button
+              onClick={onOpenPopiModal}
+              className="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg bg-[#262626] hover:bg-[#383838] border border-[#444444] hover:border-[#DC2626] text-xs font-semibold text-[#CCCCCC] hover:text-white transition-all shadow-2xs cursor-pointer"
+              title="Manage POPI Act Student Data Protection & Stakeholder Access Consent"
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#25D366]" />
+                <span className="text-[11px]">POPI Act Data Protection</span>
+              </div>
+              <span className="text-[9px] bg-[#444444] text-[#F97316] font-extrabold px-1.5 py-0.5 rounded">
+                Consent
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Student Profile Info Bar */}

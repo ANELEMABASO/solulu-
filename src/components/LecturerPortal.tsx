@@ -36,7 +36,9 @@ import {
   Sparkles,
   Award,
   Filter,
+  Database,
 } from 'lucide-react';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 interface LecturerPortalProps {
   onLogout: () => void;
@@ -176,15 +178,13 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     onShowToast('Dispatched urgent Salulu WhatsApp & Email alerts to all At-Risk students!');
   };
 
-  // Sidebar navigation items matching image.png exactly:
-  // Dashboard, Overview, Courses, Students, Teachers, Exam, Result
-  // Note: "Videos" button has been explicitly removed as requested.
+  // Sidebar navigation items:
+  // Dashboard, Overview, Courses, Students, Exam, Result (Teachers and Videos removed as requested)
   const navItems = [
     { id: 'dashboard' as LecturerScreen, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'overview' as LecturerScreen, label: 'Overview', icon: Eye },
     { id: 'courses' as LecturerScreen, label: 'Courses', icon: BookOpen },
     { id: 'students' as LecturerScreen, label: 'Students', icon: GraduationCap },
-    { id: 'teachers' as LecturerScreen, label: 'Teachers', icon: Users },
     { id: 'exam' as LecturerScreen, label: 'Exam', icon: FileText },
     { id: 'result' as LecturerScreen, label: 'Result', icon: BarChart2 },
   ];
@@ -418,14 +418,36 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-5 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-2 border-b border-gray-100">
                     <div>
-                      <h2 className="text-base sm:text-lg font-bold text-gray-900">Database</h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-bold text-gray-900">Database</h2>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Supabase {isSupabaseConfigured() ? 'Connected' : 'Integration Ready'}
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-400">
-                        Continuous assessment submissions & grading status
+                        Continuous assessment submissions, attendance sync & POPIA status
                       </p>
                     </div>
 
-                    {/* Tabs: Teacher, Student (Active), Staff */}
-                    <div className="flex items-center gap-4 text-xs font-semibold">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          onShowToast(
+                            isSupabaseConfigured()
+                              ? 'Synchronized latest student submissions with Supabase PostgreSQL!'
+                              : 'Supabase schema verified: tables ready (students, attendance_records, popi_consents).'
+                          );
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                        title="Synchronize records with Supabase"
+                      >
+                        <RefreshCw className="w-3 h-3 text-gray-500" />
+                        <span>Sync Supabase</span>
+                      </button>
+
+                      {/* Tabs: Teacher, Student (Active), Staff */}
+                      <div className="flex items-center gap-4 text-xs font-semibold">
                       <button
                         onClick={() => {
                           setDatabaseTab('teacher');
@@ -464,8 +486,9 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  {/* Submissions Table */}
+                {/* Submissions Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-gray-700">
                       <thead>
@@ -893,10 +916,10 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                 />
                 <div className="truncate">
                   <span className="text-xs font-bold text-gray-800 block truncate leading-tight">
-                    Jara Khan
+                    Dr. Elena Vasquez
                   </span>
-                  <span className="text-[10px] text-gray-400 block truncate">
-                    Senior Lecturer
+                  <span className="text-[10px] text-[#DC2626] font-semibold block truncate">
+                    Senior Lecturer & Coordinator
                   </span>
                 </div>
               </div>
