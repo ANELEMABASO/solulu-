@@ -1,4 +1,4 @@
-import { DemoEmail, McpToolCallLog } from '../types';
+import { DemoEmail, EmailReply, McpToolCallLog } from '../types';
 
 export const DEMO_STUDENT_GMAIL = 'maya.chen.student.demo@gmail.com';
 
@@ -196,6 +196,7 @@ class McpGmailService {
         'gmail.search_student_emails',
         'gmail.summarize_unread_threads',
         'gmail.create_draft_reply',
+        'gmail.send_reply',
         'gmail.sync_calendar_events_from_mail',
       ],
       lastSync: new Date().toLocaleTimeString(),
@@ -224,10 +225,48 @@ class McpGmailService {
       id: `email-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      replies: [],
     };
     this.emails = [newEmail, ...this.emails];
     this.saveEmails();
     return newEmail;
+  }
+
+  public addReply(
+    emailId: string,
+    reply: {
+      body: string;
+      device?: 'mobile' | 'web';
+      isAiGenerated?: boolean;
+    }
+  ): EmailReply | null {
+    const targetEmail = this.emails.find((e) => e.id === emailId);
+    if (!targetEmail) return null;
+
+    const newReply: EmailReply = {
+      id: `reply-${Date.now()}`,
+      from: DEMO_STUDENT_GMAIL,
+      fromName: 'Maya Chen (Student 67283910)',
+      to: targetEmail.from,
+      body: reply.body,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      device: reply.device || 'mobile',
+      isAiGenerated: reply.isAiGenerated,
+    };
+
+    this.emails = this.emails.map((e) => {
+      if (e.id === emailId) {
+        return {
+          ...e,
+          replies: [...(e.replies || []), newReply],
+        };
+      }
+      return e;
+    });
+
+    this.saveEmails();
+    return newReply;
   }
 
   /**
@@ -324,6 +363,22 @@ class McpGmailService {
         };
         newLog.resultCount = 1;
         newLog.responsePreview = `Created draft reply to ${params.to}`;
+        break;
+      }
+
+      case 'gmail.send_reply': {
+        const replyResult = this.addReply(params.messageId, {
+          body: params.body,
+          device: params.device || 'mobile',
+          isAiGenerated: params.isAiGenerated || false,
+        });
+        resultData = {
+          reply: replyResult,
+          status: 'SENT',
+          deliveredAt: new Date().toLocaleTimeString(),
+        };
+        newLog.resultCount = 1;
+        newLog.responsePreview = `Dispatched email response via ${params.device === 'mobile' ? 'Mobile Phone' : 'Web'}: "${params.body.slice(0, 45)}..."`;
         break;
       }
 

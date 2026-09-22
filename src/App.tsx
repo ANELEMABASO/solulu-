@@ -37,6 +37,7 @@ export function App() {
   const [isWorksheetModalOpen, setIsWorksheetModalOpen] = useState(false);
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [isPopiModalOpen, setIsPopiModalOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -123,10 +124,15 @@ export function App() {
         <div className="flex h-screen w-screen overflow-hidden">
           <StudentSidebar
             currentScreen={studentScreen}
-            onNavigate={(s) => setStudentScreen(s)}
+            onNavigate={(s) => {
+              setStudentScreen(s);
+              setIsMobileSidebarOpen(false);
+            }}
             onLogout={handleLogout}
             onOpenSalulu={() => setIsSaluluOpen(true)}
             onOpenPopiModal={() => setIsPopiModalOpen(true)}
+            isOpenMobile={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
           />
 
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
@@ -135,6 +141,7 @@ export function App() {
               onOpenPopiModal={() => setIsPopiModalOpen(true)}
               onNavigate={(s) => setStudentScreen(s)}
               currentScreen={studentScreen}
+              onToggleMobileMenu={() => setIsMobileSidebarOpen((prev) => !prev)}
             />
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">

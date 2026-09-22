@@ -49,6 +49,18 @@ export interface StudentProfile {
   totalCredits: number;
 }
 
+export interface EmailReply {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string;
+  body: string;
+  date: string;
+  time: string;
+  device?: 'mobile' | 'web';
+  isAiGenerated?: boolean;
+}
+
 export interface DemoEmail {
   id: string;
   from: string;
@@ -65,6 +77,7 @@ export interface DemoEmail {
   category: 'academic' | 'exams' | 'alerts' | 'general';
   tags?: string[];
   mcpActionSuggested?: string;
+  replies?: EmailReply[];
 }
 
 export interface McpToolCallLog {

@@ -20,9 +20,16 @@ import {
   ShieldCheck,
   Tag,
   ArrowLeft,
+  Smartphone,
+  Reply,
+  CornerDownLeft,
+  Check,
+  X,
+  MessageSquare,
+  Wand2,
 } from 'lucide-react';
 import { mcpGmail, DEMO_STUDENT_GMAIL } from '../services/mcpGmailService';
-import { DemoEmail, McpToolCallLog } from '../types';
+import { DemoEmail, EmailReply, McpToolCallLog } from '../types';
 
 interface StudentGmailViewProps {
   onOpenSaluluWithPrompt?: (prompt: string) => void;
@@ -51,16 +58,31 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
     steps: { name: string; detail: string; status: 'passed' | 'failed' }[];
   } | null>(null);
 
+  // Email Reply state for mobile & desktop
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
+  const [isAiGeneratingDraft, setIsAiGeneratingDraft] = useState(false);
+
   const mcpStatus = mcpGmail.getMcpStatus();
   const unreadCount = mcpGmail.getUnreadCount();
 
   useEffect(() => {
     const unsubscribe = mcpGmail.subscribe(() => {
-      setEmails(mcpGmail.getEmails());
+      const freshEmails = mcpGmail.getEmails();
+      setEmails(freshEmails);
       setLogs(mcpGmail.getToolLogs());
+      // Refresh current selectedEmail if updated with new reply
+      if (selectedEmail) {
+        const updatedSelected = freshEmails.find((e) => e.id === selectedEmail.id);
+        if (updatedSelected) {
+          setSelectedEmail(updatedSelected);
+        }
+      }
     });
     return unsubscribe;
-  }, []);
+  }, [selectedEmail]);
 
   const handleSyncMcp = async () => {
     setIsSyncing(true);
@@ -73,9 +95,75 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
 
   const handleSelectEmail = (email: DemoEmail) => {
     setSelectedEmail(email);
+    setIsReplying(false);
+    setReplyBody('');
+    setReplySuccessMessage(null);
     if (email.isUnread) {
       mcpGmail.markAsRead(email.id);
     }
+  };
+
+  const handleBackToListMobile = () => {
+    setSelectedEmail(null);
+    setIsReplying(false);
+    setReplyBody('');
+    setReplySuccessMessage(null);
+  };
+
+  const handleApplyQuickReply = (text: string) => {
+    setIsReplying(true);
+    setReplyBody(text);
+  };
+
+  const handleGenerateAiDraftReply = async () => {
+    if (!selectedEmail) return;
+    setIsAiGeneratingDraft(true);
+    setIsReplying(true);
+
+    let draftContent = '';
+    if (selectedEmail.subject.toLowerCase().includes('feedback') || selectedEmail.subject.toLowerCase().includes('assignment')) {
+      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you very much for reviewing my assignment and for the detailed, constructive feedback. I am glad that the implementation met the distinction standard.\n\nI would be delighted to attend your academic consultation session on Tuesday at 14:00 (Room C1.08) to discuss preparing for the upcoming semester examination.\n\nKind regards,\nMaya Chen\nStudent Number: 67283910\nSent from myUNISA Mobile`;
+    } else if (selectedEmail.category === 'exams') {
+      draftContent = `Dear UNISA Examinations Directorate,\n\nI acknowledge receipt of the final May/June 2026 examination timetable for CS204 and CS201. I have recorded the dates on my academic calendar and will complete the online mock proctoring verification ahead of the deadline.\n\nThank you for the notification.\n\nKind regards,\nMaya Chen (67283910)\nSent from myUNISA Mobile`;
+    } else {
+      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you for this update. I have reviewed the details and will follow up accordingly.\n\nKind regards,\nMaya Chen\nUNISA Student No: 67283910\nSent from myUNISA Mobile`;
+    }
+
+    // Call MCP create_draft_reply tool
+    await mcpGmail.executeMcpTool('gmail.create_draft_reply', {
+      to: selectedEmail.from,
+      subject: selectedEmail.subject,
+      body: draftContent,
+    });
+
+    setReplyBody(draftContent);
+    setIsAiGeneratingDraft(false);
+  };
+
+  const handleSendReply = async (device: 'mobile' | 'web' = 'mobile') => {
+    if (!selectedEmail || !replyBody.trim()) return;
+    setIsSendingReply(true);
+
+    // Call MCP send_reply tool
+    await mcpGmail.executeMcpTool('gmail.send_reply', {
+      messageId: selectedEmail.id,
+      body: replyBody.trim(),
+      device,
+      isAiGenerated: false,
+    });
+
+    setIsSendingReply(false);
+    setReplySuccessMessage(
+      `Response successfully sent to ${selectedEmail.fromName} via ${
+        device === 'mobile' ? 'Mobile Phone' : 'Web'
+      }!`
+    );
+    setReplyBody('');
+    setIsReplying(false);
+
+    setTimeout(() => {
+      setReplySuccessMessage(null);
+    }, 4500);
   };
 
   const handleToggleStar = (e: React.MouseEvent, id: string) => {
@@ -354,7 +442,9 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
       {/* ── Main Gmail Interface Layout ── */}
       <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[580px]">
         {/* Left Sidebar Navigation */}
-        <div className="w-full md:w-60 border-r border-[#EAEAEA] bg-[#FAFAFA] flex flex-col p-3 shrink-0">
+        <div className={`w-full md:w-60 border-r border-[#EAEAEA] bg-[#FAFAFA] flex flex-col p-3 shrink-0 ${
+          selectedEmail ? 'hidden md:flex' : 'flex'
+        }`}>
           <button
             onClick={() => setIsComposeOpen(true)}
             className="w-full mb-3 bg-[#DC2626] hover:bg-[#B91C1C] text-white py-2.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
@@ -363,10 +453,10 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             <span>Send Test Email</span>
           </button>
 
-          <nav className="space-y-1">
+          <nav className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
             <button
               onClick={() => setFilterCategory('all')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'all'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -376,12 +466,12 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                 <Inbox className="w-4 h-4" />
                 <span>All Mail</span>
               </div>
-              <span className="text-[11px] font-bold text-[#888888]">{emails.length}</span>
+              <span className="text-[11px] font-bold text-[#888888] ml-2">{emails.length}</span>
             </button>
 
             <button
               onClick={() => setFilterCategory('unread')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'unread'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -392,7 +482,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                 <span>Unread</span>
               </div>
               {unreadCount > 0 && (
-                <span className="text-[10px] bg-[#DC2626] text-white px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-[#DC2626] text-white px-2 py-0.5 rounded-full font-bold ml-2">
                   {unreadCount}
                 </span>
               )}
@@ -400,7 +490,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
 
             <button
               onClick={() => setFilterCategory('academic')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'academic'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -408,13 +498,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Tag className="w-4 h-4 text-blue-500" />
-                <span>Lecturer Feedback</span>
+                <span className="whitespace-nowrap">Feedback</span>
               </div>
             </button>
 
             <button
               onClick={() => setFilterCategory('exams')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'exams'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -422,13 +512,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-4 h-4 text-purple-500" />
-                <span>Exam Timetables</span>
+                <span className="whitespace-nowrap">Exams</span>
               </div>
             </button>
 
             <button
               onClick={() => setFilterCategory('alerts')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'alerts'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -436,13 +526,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <AlertCircle className="w-4 h-4 text-emerald-500" />
-                <span>Solulu Alerts</span>
+                <span className="whitespace-nowrap">Alerts</span>
               </div>
             </button>
 
             <button
               onClick={() => setFilterCategory('starred')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 filterCategory === 'starred'
                   ? 'bg-[#EAEAEA] text-[#DC2626] font-bold'
                   : 'text-[#555555] hover:bg-[#F0F0F0]'
@@ -450,12 +540,12 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Star className="w-4 h-4 text-amber-500" />
-                <span>Starred</span>
+                <span className="whitespace-nowrap">Starred</span>
               </div>
             </button>
           </nav>
 
-          <div className="mt-auto pt-4 border-t border-[#EAEAEA]">
+          <div className="mt-auto pt-4 border-t border-[#EAEAEA] hidden md:block">
             <div className="p-3 bg-white rounded-lg border border-[#E0E0E0] text-[11px] space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-[#333333]">MCP Sync</span>
@@ -476,7 +566,9 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
         </div>
 
         {/* Center: Email Thread List */}
-        <div className="w-full md:w-80 lg:w-96 border-r border-[#EAEAEA] flex flex-col shrink-0">
+        <div className={`w-full md:w-80 lg:w-96 border-r border-[#EAEAEA] flex flex-col shrink-0 ${
+          selectedEmail ? 'hidden md:flex' : 'flex'
+        }`}>
           {/* Search bar */}
           <div className="p-3 border-b border-[#EAEAEA] bg-white">
             <div className="relative">
@@ -500,6 +592,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             ) : (
               filteredEmails.map((email) => {
                 const isSelected = selectedEmail?.id === email.id;
+                const replyCount = email.replies?.length || 0;
                 return (
                   <div
                     key={email.id}
@@ -552,15 +645,23 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                       {email.snippet}
                     </p>
 
-                    <div className="flex items-center gap-1.5 mt-2">
-                      {email.tags?.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[9px] bg-[#EAEAEA] text-[#555555] px-1.5 py-0.5 rounded font-medium"
-                        >
-                          {tag}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1.5">
+                        {email.tags?.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[9px] bg-[#EAEAEA] text-[#555555] px-1.5 py-0.5 rounded font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      {replyCount > 0 && (
+                        <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded flex items-center gap-1 font-semibold">
+                          <CornerDownLeft className="w-2.5 h-2.5" />
+                          <span>{replyCount} {replyCount === 1 ? 'reply' : 'replies'}</span>
                         </span>
-                      ))}
+                      )}
                     </div>
                   </div>
                 );
@@ -570,34 +671,69 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
         </div>
 
         {/* Right Pane: Email Detail & AI Action Bar */}
-        <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+        <div className={`flex-1 flex flex-col bg-white overflow-y-auto ${
+          !selectedEmail ? 'hidden md:flex' : 'flex'
+        }`}>
           {selectedEmail ? (
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5">
+              {/* Mobile Back to Inbox Bar */}
+              <div className="flex md:hidden items-center justify-between pb-3 border-b border-[#EAEAEA]">
+                <button
+                  onClick={handleBackToListMobile}
+                  className="flex items-center gap-1.5 text-xs font-bold text-[#DC2626] hover:text-[#B91C1C] py-1 px-2 -ml-2 rounded-lg active:bg-red-50"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to Inbox</span>
+                </button>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">
+                    Phone Optimized
+                  </span>
+                </div>
+              </div>
+
+              {/* Notification Banner when reply sent */}
+              {replySuccessMessage && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-center justify-between gap-2 animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{replySuccessMessage}</span>
+                  </div>
+                  <button
+                    onClick={() => setReplySuccessMessage(null)}
+                    className="text-emerald-700 hover:text-emerald-900"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Header */}
               <div className="border-b border-[#EAEAEA] pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-[#222222] leading-snug">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm sm:text-lg font-bold text-[#222222] leading-snug break-words">
                       {selectedEmail.subject}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
                       <span className="text-xs font-bold text-[#111111]">
                         {selectedEmail.fromName}
                       </span>
-                      <span className="text-xs text-[#777777]">
+                      <span className="text-xs text-[#777777] break-all">
                         &lt;{selectedEmail.from}&gt;
                       </span>
-                      <span className="text-xs text-[#999999]">to {selectedEmail.to}</span>
+                      <span className="text-xs text-[#999999] break-all">to {selectedEmail.to}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#888888] font-medium">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] sm:text-xs text-[#888888] font-medium whitespace-nowrap">
                       {selectedEmail.date} at {selectedEmail.time}
                     </span>
                     <button
                       onClick={(e) => handleToggleStar(e, selectedEmail.id)}
                       className="p-1.5 text-gray-400 hover:text-amber-500 rounded-lg hover:bg-gray-100"
+                      title="Star this email"
                     >
                       <Star
                         className={`w-4 h-4 ${
@@ -610,7 +746,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
 
                 {/* AI Agent Recommendation Banner */}
                 {selectedEmail.mcpActionSuggested && (
-                  <div className="mt-4 bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg p-3 flex items-start justify-between gap-3">
+                  <div className="mt-4 bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5">
                       <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                       <div>
@@ -624,7 +760,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                     </div>
                     <button
                       onClick={() => handleAskAgentAboutEmail(selectedEmail)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors shrink-0 shadow-xs"
+                      className="self-start sm:self-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors shrink-0 shadow-xs"
                     >
                       Execute with AI →
                     </button>
@@ -633,30 +769,180 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
               </div>
 
               {/* Email Body */}
-              <div className="text-xs sm:text-sm text-[#333333] leading-relaxed whitespace-pre-line font-sans">
+              <div className="text-xs sm:text-sm text-[#333333] leading-relaxed whitespace-pre-line font-sans bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                 {selectedEmail.body}
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-6 border-t border-[#EAEAEA] flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => handleAskAgentAboutEmail(selectedEmail)}
-                  className="bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Draft Reply via Solulu MCP</span>
-                </button>
+              {/* Thread Replies (if any already sent) */}
+              {selectedEmail.replies && selectedEmail.replies.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#555555]">
+                    <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Responses & Thread History ({selectedEmail.replies.length})</span>
+                  </div>
 
-                {selectedEmail.category === 'exams' && onNavigateToCalendar && (
+                  <div className="space-y-2.5">
+                    {selectedEmail.replies.map((reply) => (
+                      <div
+                        key={reply.id}
+                        className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-[#222222] space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-blue-950">{reply.fromName}</span>
+                            <span className="text-[11px] text-blue-700 font-medium">({reply.from})</span>
+                            {reply.device === 'mobile' && (
+                              <span className="text-[9px] bg-blue-200/80 text-blue-900 font-semibold px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                                <Smartphone className="w-2.5 h-2.5" />
+                                Phone
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-500">{reply.date} at {reply.time}</span>
+                        </div>
+                        <p className="whitespace-pre-line text-[#333333] leading-relaxed pl-1">
+                          {reply.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Reply Chips - Mobile One-Tap Responses */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-[#666666] flex items-center gap-1">
+                    <Smartphone className="w-3.5 h-3.5 text-[#DC2626]" />
+                    <span>Mobile Quick Responses:</span>
+                  </span>
                   <button
-                    onClick={onNavigateToCalendar}
-                    className="bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#333333] border border-[#CCCCCC] text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
+                    onClick={handleGenerateAiDraftReply}
+                    disabled={isAiGeneratingDraft}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                    <span>View Exam in Calendar</span>
+                    <Wand2 className={`w-3 h-3 ${isAiGeneratingDraft ? 'animate-spin' : ''}`} />
+                    <span>{isAiGeneratingDraft ? 'Generating Draft...' : 'AI Auto-Draft Reply'}</span>
                   </button>
-                )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() =>
+                      handleApplyQuickReply(
+                        'Thank you for the update. I have noted this on my academic schedule and will prepare accordingly.'
+                      )
+                    }
+                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors text-left"
+                  >
+                    "Thank you, noted on my schedule"
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleApplyQuickReply(
+                        'Thank you Dr. Vasquez. I will attend the consultation session on Tuesday at 14:00.'
+                      )
+                    }
+                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors text-left"
+                  >
+                    "I will attend the consultation session"
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleApplyQuickReply(
+                        'Acknowledged. I will review the feedback and complete the mock exam verification.'
+                      )
+                    }
+                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors text-left"
+                  >
+                    "Acknowledged, will review feedback"
+                  </button>
+                </div>
               </div>
+
+              {/* Reply Form / Action Box (Integrated for both Phone & Desktop) */}
+              {isReplying ? (
+                <div className="pt-4 border-t border-[#EAEAEA] space-y-3 bg-[#FAFAFA] p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Reply className="w-4 h-4 text-[#DC2626]" />
+                      <span className="text-xs font-bold text-[#222222]">
+                        Replying to {selectedEmail.fromName} &lt;{selectedEmail.from}&gt;
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsReplying(false)}
+                      className="text-xs text-slate-500 hover:text-slate-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <textarea
+                      rows={4}
+                      value={replyBody}
+                      onChange={(e) => setReplyBody(e.target.value)}
+                      placeholder="Write your email response here on your mobile phone..."
+                      className="w-full text-xs sm:text-sm p-3 bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] leading-relaxed"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-[10px] text-slate-500">
+                        Sending from {DEMO_STUDENT_GMAIL}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSendReply('mobile')}
+                          disabled={isSendingReply || !replyBody.trim()}
+                          className="bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-slate-300 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition-colors"
+                        >
+                          <Smartphone className="w-3.5 h-3.5" />
+                          <span>{isSendingReply ? 'Sending...' : 'Send from Phone'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendReply('web')}
+                          disabled={isSendingReply || !replyBody.trim()}
+                          className="hidden sm:flex bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-2 rounded-lg items-center gap-1.5 shadow-xs transition-colors"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Action Buttons */
+                <div className="pt-4 border-t border-[#EAEAEA] flex flex-wrap items-center gap-2.5">
+                  <button
+                    onClick={() => setIsReplying(true)}
+                    className="w-full sm:w-auto bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs"
+                  >
+                    <Reply className="w-4 h-4" />
+                    <span>Respond to Email</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleAskAgentAboutEmail(selectedEmail)}
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Draft Reply with Solulu AI</span>
+                  </button>
+
+                  {selectedEmail.category === 'exams' && onNavigateToCalendar && (
+                    <button
+                      onClick={onNavigateToCalendar}
+                      className="w-full sm:w-auto bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#333333] border border-[#CCCCCC] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                      <span>View Exam in Calendar</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#888888]">

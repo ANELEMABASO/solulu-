@@ -112,8 +112,6 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
     }
   }, [timeline, isTyping, isOpen]);
 
-  if (!isOpen) return null;
-
   // Handle external prompt if triggered from UI
   useEffect(() => {
     if (isOpen && externalPrompt && externalPrompt.trim()) {
@@ -671,6 +669,8 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
   ];
 
   const activeChips = role === 'student' ? studentChips : lecturerChips;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-white shadow-2xl z-50 flex flex-col border-l-4 border-[#DC2626] ai-panel-slide-in font-sans">

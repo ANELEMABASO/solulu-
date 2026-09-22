@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, Sparkles, ShieldCheck, Mail } from 'lucide-react';
+import { Search, Bell, Sparkles, ShieldCheck, Mail, Menu } from 'lucide-react';
 
 interface StudentHeaderProps {
   title?: string;
@@ -9,6 +9,7 @@ interface StudentHeaderProps {
   onShowToast?: (msg: string) => void;
   onNavigate?: (screen: any) => void;
   currentScreen?: any;
+  onToggleMobileMenu?: () => void;
 }
 
 export const StudentHeader: React.FC<StudentHeaderProps> = ({
@@ -19,17 +20,29 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
   onShowToast = () => {},
   onNavigate,
   currentScreen,
+  onToggleMobileMenu,
 }) => {
   return (
     <header className="h-16 bg-white border-b border-[#E0E0E0] px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-xs font-sans">
-      <div>
-        <h1 className="text-base sm:text-lg font-bold text-[#333333] flex items-center gap-2">
-          <span>{title}</span>
-          <span className="hidden sm:inline text-xs text-[#DC2626] font-bold bg-[#FEF2F2] px-2 py-0.5 rounded border border-[#FECACA]">
-            myUNISA 2026
-          </span>
-        </h1>
-        {subtitle && <p className="text-xs text-[#666666]">{subtitle}</p>}
+      <div className="flex items-center gap-3">
+        {onToggleMobileMenu && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-1.5 rounded-lg text-[#333333] hover:bg-[#F0F0F0] border border-[#E0E0E0] focus:outline-hidden"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5 text-[#333333]" />
+          </button>
+        )}
+        <div>
+          <h1 className="text-base sm:text-lg font-bold text-[#333333] flex items-center gap-2">
+            <span>{title}</span>
+            <span className="hidden sm:inline text-xs text-[#DC2626] font-bold bg-[#FEF2F2] px-2 py-0.5 rounded border border-[#FECACA]">
+              myUNISA 2026
+            </span>
+          </h1>
+          {subtitle && <p className="text-xs text-[#666666]">{subtitle}</p>}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

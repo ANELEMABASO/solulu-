@@ -13,6 +13,7 @@ import {
   Sparkles,
   ShieldCheck,
   Mail,
+  X,
 } from 'lucide-react';
 
 interface StudentSidebarProps {
@@ -21,6 +22,8 @@ interface StudentSidebarProps {
   onLogout: () => void;
   onOpenSalulu: () => void;
   onOpenPopiModal?: () => void;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const StudentSidebar: React.FC<StudentSidebarProps> = ({
@@ -29,6 +32,8 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
   onLogout,
   onOpenSalulu,
   onOpenPopiModal,
+  isOpenMobile = false,
+  onCloseMobile,
 }) => {
   const navItems = [
     { id: 'overview' as StudentScreen, label: 'Overview', icon: LayoutDashboard },
@@ -40,13 +45,41 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
     { id: 'gmail' as StudentScreen, label: 'Demo Gmail (MCP)', icon: Mail, badge: 'Live MCP' },
   ];
 
+  const handleItemClick = (screen: StudentScreen) => {
+    onNavigate(screen);
+    if (onCloseMobile) onCloseMobile();
+  };
+
   return (
-    <aside className="w-64 bg-[#333333] text-white flex flex-col justify-between shrink-0 border-r-4 border-[#DC2626] shadow-lg z-20 font-sans">
-      <div>
-        {/* Header with UNISA Wordmark */}
-        <div className="p-5 border-b border-[#444444]">
-          <UnisaLogo size="sm" theme="dark" showTagline={false} />
-          <div className="mt-2.5 flex items-center justify-between">
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpenMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#333333] text-white flex flex-col justify-between shrink-0 border-r-4 border-[#DC2626] shadow-xl md:shadow-lg font-sans transition-transform duration-300 ease-in-out ${
+          isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div>
+          {/* Header with UNISA Wordmark */}
+          <div className="p-5 border-b border-[#444444] flex items-center justify-between">
+            <UnisaLogo size="sm" theme="dark" showTagline={false} />
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="md:hidden text-[#AAAAAA] hover:text-white p-1 rounded-md"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="px-5 py-2 bg-[#2B2B2B] flex items-center justify-between border-b border-[#3D3D3D]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#F97316]">
               Student Portal
             </span>
@@ -54,36 +87,35 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
               Semester 1, 2026
             </span>
           </div>
-        </div>
 
-        {/* Navigation Items */}
-        <nav className="p-3 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentScreen === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${
-                  isActive
-                    ? 'bg-[#DC2626] text-white shadow-xs'
-                    : 'text-[#CCCCCC] hover:bg-[#444444] hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-extrabold tracking-wide">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+          {/* Navigation Items */}
+          <nav className="p-3 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentScreen === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${
+                    isActive
+                      ? 'bg-[#DC2626] text-white shadow-xs'
+                      : 'text-[#CCCCCC] hover:bg-[#444444] hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-extrabold tracking-wide">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
 
         {/* Solulu Elevate AI Autonomous Module Monitor Widget */}
         <div className="m-3 p-3.5 bg-[#262626] rounded-xl border border-[#DC2626]/60 text-xs space-y-2">
@@ -148,5 +180,6 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
         </button>
       </div>
     </aside>
+    </>
   );
 };
