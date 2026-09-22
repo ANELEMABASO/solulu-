@@ -1,6 +1,6 @@
 import { DemoEmail, EmailReply, McpToolCallLog } from '../types';
 
-export const DEMO_STUDENT_GMAIL = 'maya.chen.student.demo@gmail.com';
+export const DEMO_STUDENT_GMAIL = 'maya.sithole.2024@gmail.com';
 
 const INITIAL_EMAILS: DemoEmail[] = [
   {

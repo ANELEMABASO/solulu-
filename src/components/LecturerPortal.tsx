@@ -352,6 +352,17 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                   <span>Solulu Elevate AI</span>
                 </button>
 
+                {/* Lecturer session control */}
+                <button
+                  onClick={onLogout}
+                  className="bg-[#333333] hover:bg-[#222222] text-white px-3.5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer"
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign out</span>
+                </button>
+
                 {/* Batch Nudge At Risk */}
                 <button
                   onClick={handleBatchAlert}

@@ -154,6 +154,7 @@ export function App() {
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <StudentHeader
               onOpenSalulu={() => setIsSaluluOpen(true)}
+              onLogout={handleLogout}
               onOpenPopiModal={() => setIsPopiModalOpen(true)}
               onNavigate={(s) => setStudentScreen(s)}
               currentScreen={studentScreen}

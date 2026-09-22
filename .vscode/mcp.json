@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "solulu-student-email": {
+      "command": "npm",
+      "args": ["run", "mcp:email"]
+    }
+  }
+}

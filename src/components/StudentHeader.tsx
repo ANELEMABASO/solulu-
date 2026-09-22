@@ -1,10 +1,11 @@
 import React from 'react';
-import { Search, Bell, Sparkles, ShieldCheck, Mail, Menu } from 'lucide-react';
+import { Search, Bell, Sparkles, ShieldCheck, Mail, Menu, LogOut } from 'lucide-react';
 
 interface StudentHeaderProps {
   title?: string;
   subtitle?: string;
   onOpenSalulu: () => void;
+  onLogout: () => void;
   onOpenPopiModal?: () => void;
   onShowToast?: (msg: string) => void;
   onNavigate?: (screen: any) => void;
@@ -16,6 +17,7 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
   title = 'myUNISA Student Portal',
   subtitle,
   onOpenSalulu,
+  onLogout,
   onOpenPopiModal,
   onShowToast = () => {},
   onNavigate,
@@ -70,7 +72,7 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
                 ? 'bg-[#DC2626] text-white border border-[#DC2626]'
                 : 'bg-[#F0FDF4] hover:bg-[#DCFCE7] text-emerald-800 border border-[#BBF7D0]'
             }`}
-            title="Open Student Demo Gmail (maya.chen.student.demo@gmail.com)"
+            title="Open Student Demo Gmail (maya.sithole.2024@gmail.com)"
           >
             <Mail className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Demo Gmail</span>
@@ -118,6 +120,17 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
           <Sparkles className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Solulu Elevate AI</span>
           <span className="sm:hidden">Solulu</span>
+        </button>
+
+        {/* Student session control */}
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-1.5 bg-[#333333] hover:bg-[#222222] text-white px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-colors"
+          title="Sign out"
+          aria-label="Sign out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </header>

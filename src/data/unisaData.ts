@@ -4,7 +4,7 @@ export const CURRENT_STUDENT: StudentProfile = {
   name: 'Maya Chen',
   studentNumber: '67283910',
   email: '67283910@mylife.unisa.ac.za',
-  demoGmail: 'maya.chen.student.demo@gmail.com',
+  demoGmail: 'maya.sithole.2024@gmail.com',
   degree: 'Bachelor of Science in Computing & Informatics',
   semester: 'Semester 1, 2026',
   creditsEarned: 180,

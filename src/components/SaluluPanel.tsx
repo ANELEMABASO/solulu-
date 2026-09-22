@@ -61,7 +61,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
         "2. **Notify you if you are at risk of failing the module or if you are doing well** — Continuous assessment monitoring and proactive performance warnings.\n" +
         "3. **Schedule consultation sessions with your lecturer** — Direct 1-on-1 booking with Dr. Elena Vasquez and teaching assistants.\n" +
         "4. **Alert the lecturer that you are struggling academically for support** — Private academic distress signaling for personalized tutoring intervention.\n" +
-        "5. **Read & analyze your student Gmail inbox via Model Context Protocol (MCP)** — Autonomous connection to `maya.chen.student.demo@gmail.com` to inspect lecturer grading feedback, official UNISA exam schedules, and attendance alerts.\n\n" +
+        "5. **Read & analyze your student Gmail inbox via Model Context Protocol (MCP)** — Autonomous connection to `maya.sithole.2024@gmail.com` to inspect lecturer grading feedback, official UNISA exam schedules, and attendance alerts.\n\n" +
         "How can I support your study today?"
       );
     } else {
@@ -302,7 +302,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
 
           reply =
             "Solulu Elevate Gmail MCP Intelligence Report 📬:\n" +
-            "I accessed your demo Gmail account (**maya.chen.student.demo@gmail.com**) via the connected **@google/mcp-server-gmail** Model Context Protocol bridge (JSON-RPC 2.0 stdio):\n\n" +
+            "I accessed your demo Gmail account (**maya.sithole.2024@gmail.com**) via the connected **@google/mcp-server-gmail** Model Context Protocol bridge (JSON-RPC 2.0 stdio):\n\n" +
             "1. **Dr. Elena Vasquez (CS204 Coordinator)** · *Assignment 2 Grading Feedback*\n" +
             "   • **Result**: **84% (Distinction grade)** on AVL Trees & Dijkstra Graph Traversals.\n" +
             "   • **Feedback**: Commended for balance factor logic; invited to personal consultation session this **Tuesday at 14:00** in Room C1.08 (Science Campus) for final exam coaching.\n\n" +
@@ -321,7 +321,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
             id: getId(),
             icon: '⚡',
             label: 'MCP Tool: gmail.summarize_unread_threads',
-            detail: 'Invoked via JSON-RPC stdio for maya.chen.student.demo@gmail.com (2 unread / 4 total)',
+            detail: 'Invoked via JSON-RPC stdio for maya.sithole.2024@gmail.com (2 unread / 4 total)',
             channel: 'system',
           });
           actionsToRun.push({
@@ -346,7 +346,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
 
           reply =
             "Solulu Elevate Draft Reply Dispatched via MCP ✍️:\n" +
-            "I invoked the **gmail.create_draft_reply** MCP tool for your account (`maya.chen.student.demo@gmail.com`):\n\n" +
+            "I invoked the **gmail.create_draft_reply** MCP tool for your account (`maya.sithole.2024@gmail.com`):\n\n" +
             "**To**: Dr. Elena Vasquez <e.vasquez@unisa.ac.za>\n" +
             "**Subject**: Re: CS204: Feedback on Assignment 2 & Consultation Invitation\n\n" +
             "```text\n" +
@@ -362,7 +362,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
             id: getId(),
             icon: '⚡',
             label: 'MCP Tool: gmail.create_draft_reply',
-            detail: 'Draft saved in maya.chen.student.demo@gmail.com for e.vasquez@unisa.ac.za',
+            detail: 'Draft saved in maya.sithole.2024@gmail.com for e.vasquez@unisa.ac.za',
             channel: 'email',
           });
         } else {
