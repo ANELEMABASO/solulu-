@@ -1,6 +1,6 @@
 import React from 'react';
 import { UnisaLogo } from './UnisaLogo';
-import { StudentScreen } from '../types';
+import { StudentScreen, StudentProfile } from '../types';
 import { CURRENT_STUDENT } from '../data/unisaData';
 import {
   LayoutDashboard,
@@ -24,6 +24,7 @@ interface StudentSidebarProps {
   onOpenPopiModal?: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  userProfile?: StudentProfile;
 }
 
 export const StudentSidebar: React.FC<StudentSidebarProps> = ({
@@ -34,6 +35,7 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
   onOpenPopiModal,
   isOpenMobile = false,
   onCloseMobile,
+  userProfile = CURRENT_STUDENT,
 }) => {
   const navItems = [
     { id: 'overview' as StudentScreen, label: 'Overview', icon: LayoutDashboard },
@@ -162,12 +164,17 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
       <div className="p-4 border-t border-[#444444] bg-[#2A2A2A] flex items-center justify-between">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-8 h-8 rounded-full bg-[#DC2626] text-white flex items-center justify-center font-bold text-xs shrink-0 border border-[#F97316]">
-            MC
+            {userProfile.name
+              .split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2) || 'ST'}
           </div>
           <div className="truncate">
-            <p className="text-xs font-bold text-white truncate">{CURRENT_STUDENT.name}</p>
+            <p className="text-xs font-bold text-white truncate">{userProfile.name}</p>
             <p className="text-[10px] text-[#F97316] font-mono truncate">
-              {CURRENT_STUDENT.studentNumber}
+              {userProfile.studentNumber}
             </p>
           </div>
         </div>

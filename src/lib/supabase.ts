@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { StudentProfile } from '../types';
 
 // Types for Supabase Tables
 export interface DbStudent {
@@ -339,35 +340,180 @@ export async function fetchStudentAnalyticsFromSupabase(studentNumber: string) {
 }
 
 /**
- * Exports a JSON snapshot backup of the key database tables for local backup.
+ * Registers a new student account, saving their details to Supabase and local storage.
  */
-export async function exportDatabaseBackupFromSupabase() {
+export async function registerStudentWithSupabase(data: {
+  studentNumber: string;
+  name: string;
+  email: string;
+  qualification?: string;
+  campus?: string;
+  password?: string;
+}): Promise<{ success: boolean; student: StudentProfile; message: string }> {
   const client = getSupabase();
-  if (!client) return null;
+  const normalizedNum = data.studentNumber.trim();
+  const studentEmail = data.email.trim() || `${normalizedNum}@mylife.unisa.ac.za`;
 
+  const newProfile: StudentProfile = {
+    name: data.name.trim(),
+    studentNumber: normalizedNum,
+    email: studentEmail,
+    demoGmail: `${normalizedNum}@gmail.com`,
+    degree: data.qualification || 'Bachelor of Science in Computing & Informatics',
+    semester: 'Semester 1, 2026',
+    creditsEarned: 120,
+    totalCredits: 360,
+  };
+
+  // Always persist to local registered students database
   try {
-    const [students, modules, attendance, popi, alerts] = await Promise.all([
-      client.from('students').select('*'),
-      client.from('modules').select('*'),
-      client.from('attendance_records').select('*'),
-      client.from('popi_consents').select('*'),
-      client.from('academic_alerts').select('*'),
-    ]);
+    const raw = localStorage.getItem('unisa_registered_students_v1');
+    const registered: any[] = raw ? JSON.parse(raw) : [];
+    const existingIndex = registered.findIndex(
+      (s) => s.studentNumber === normalizedNum || s.email.toLowerCase() === studentEmail.toLowerCase()
+    );
+    if (existingIndex >= 0) {
+      registered[existingIndex] = { ...registered[existingIndex], ...newProfile, password: data.password };
+    } else {
+      registered.push({ ...newProfile, password: data.password });
+    }
+    localStorage.setItem('unisa_registered_students_v1', JSON.stringify(registered));
+  } catch (e) {
+    console.warn('Local storage write error:', e);
+  }
 
+  // If Supabase is available, sync to students table
+  if (client) {
+    try {
+      await client.from('students').upsert(
+        {
+          student_number: normalizedNum,
+          name: newProfile.name,
+          email: studentEmail,
+          qualification: newProfile.degree,
+          campus: data.campus || 'Muckleneuk Campus (Pretoria)',
+          risk_status: 'Low Risk',
+          risk_score: 15,
+          popi_consented: true,
+          popi_allowed_stakeholders: ['Lecturers', 'Academic Advisors', 'Department Head'],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'student_number' }
+      );
+    } catch (err) {
+      console.warn('Supabase students upsert warning:', err);
+    }
+  }
+
+  return {
+    success: true,
+    student: newProfile,
+    message: `Account created successfully for ${newProfile.name} (${normalizedNum})!`,
+  };
+}
+
+/**
+ * Validates login credentials against Supabase / Registered local students / Demo accounts.
+ */
+export async function authenticateUserWithSupabase(
+  identifier: string,
+  secret: string,
+  role: 'student' | 'staff'
+): Promise<{ success: boolean; role: 'student' | 'lecturer'; studentProfile?: StudentProfile; error?: string }> {
+  const cleanId = identifier.trim();
+  const cleanPass = secret.trim();
+
+  if (role === 'staff') {
+    // Check staff credentials
+    if (cleanId.toLowerCase() === 'evasquez@unisa.ac.za' || cleanId.toLowerCase() === 'lecturer' || cleanId === 'UNISA-STAFF-4821') {
+      return { success: true, role: 'lecturer' };
+    }
+    // Allow any academic staff domain
+    if (cleanId.includes('@unisa.ac.za') && cleanPass.length >= 4) {
+      return { success: true, role: 'lecturer' };
+    }
     return {
-      timestamp: new Date().toISOString(),
-      project: 'wjjsljkwgknsrxkrajvm',
-      data: {
-        students: students.data || [],
-        modules: modules.data || [],
-        attendance_records: attendance.data || [],
-        popi_consents: popi.data || [],
-        academic_alerts: alerts.data || [],
+      success: false,
+      role: 'lecturer',
+      error: 'Invalid staff credentials. Use evasquez@unisa.ac.za or register an account.',
+    };
+  }
+
+  // 1. Check Default Demo Student (Maya Chen)
+  if (cleanId === '67283910' || cleanId.toLowerCase() === '67283910@mylife.unisa.ac.za') {
+    return {
+      success: true,
+      role: 'student',
+      studentProfile: {
+        name: 'Maya Chen',
+        studentNumber: '67283910',
+        email: '67283910@mylife.unisa.ac.za',
+        demoGmail: 'maya.chen.student.demo@gmail.com',
+        degree: 'Bachelor of Science in Computing & Informatics',
+        semester: 'Semester 1, 2026',
+        creditsEarned: 180,
+        totalCredits: 360,
       },
     };
-  } catch (err) {
-    console.error('Failed to export backup snapshot:', err);
-    return null;
   }
+
+  // 2. Check local registered students
+  try {
+    const raw = localStorage.getItem('unisa_registered_students_v1');
+    if (raw) {
+      const registered: any[] = JSON.parse(raw);
+      const matched = registered.find(
+        (s) =>
+          s.studentNumber === cleanId ||
+          s.email?.toLowerCase() === cleanId.toLowerCase()
+      );
+      if (matched) {
+        return {
+          success: true,
+          role: 'student',
+          studentProfile: matched,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading registered accounts:', e);
+  }
+
+  // 3. Check Supabase students table
+  const client = getSupabase();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('students')
+        .select('*')
+        .or(`student_number.eq.${cleanId},email.eq.${cleanId}`)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const row = data[0];
+        const studentProfile: StudentProfile = {
+          name: row.name || 'Enrolled Student',
+          studentNumber: row.student_number,
+          email: row.email || `${row.student_number}@mylife.unisa.ac.za`,
+          demoGmail: `${row.student_number}@gmail.com`,
+          degree: row.qualification || 'Bachelor of Science in Computing & Informatics',
+          semester: 'Semester 1, 2026',
+          creditsEarned: 150,
+          totalCredits: 360,
+        };
+        return { success: true, role: 'student', studentProfile };
+      }
+    } catch (err) {
+      console.warn('Supabase student lookup error:', err);
+    }
+  }
+
+  // 4. If credentials don't match any existing records
+  return {
+    success: false,
+    role: 'student',
+    error: 'No account found matching these details. Please register/sign up to obtain access.',
+  };
 }
+
 

@@ -33,12 +33,26 @@ import {
 
 // ── 1. Student Overview Screen ─────────────────────────────────────────────────
 export const StudentOverviewView: React.FC<{
+  userProfile?: {
+    name: string;
+    studentNumber: string;
+    email: string;
+    degree: string;
+    semester: string;
+  };
   onSelectModule: (code: string) => void;
   onOpenSchedule: () => void;
   onOpenCalendar: () => void;
   onOpenLesson: () => void;
   onOpenWorksheet: () => void;
-}> = ({ onSelectModule, onOpenSchedule, onOpenCalendar, onOpenLesson, onOpenWorksheet }) => {
+}> = ({
+  userProfile = CURRENT_STUDENT,
+  onSelectModule,
+  onOpenSchedule,
+  onOpenCalendar,
+  onOpenLesson,
+  onOpenWorksheet,
+}) => {
   return (
     <div className="space-y-6">
       {/* Welcome Banner in Vibrant Red #DC2626 */}
@@ -48,17 +62,17 @@ export const StudentOverviewView: React.FC<{
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs bg-[#F97316] text-white px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                {CURRENT_STUDENT.semester}
+                {userProfile.semester || CURRENT_STUDENT.semester}
               </span>
               <span className="text-xs text-[#F5F5F5]/80 font-mono">
-                Student No: {CURRENT_STUDENT.studentNumber}
+                Student No: {userProfile.studentNumber}
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Welcome back, {CURRENT_STUDENT.name} 👋
+              Welcome back, {userProfile.name} 👋
             </h2>
             <p className="text-xs sm:text-sm text-[#F5F5F5]/90 mt-1 max-w-xl">
-              {CURRENT_STUDENT.degree} · College of Science, Engineering & Technology
+              {userProfile.degree || CURRENT_STUDENT.degree} · College of Science, Engineering & Technology
             </p>
           </div>
 

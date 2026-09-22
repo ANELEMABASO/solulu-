@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Role, StudentScreen } from './types';
+import { Role, StudentScreen, StudentProfile } from './types';
+import { CURRENT_STUDENT } from './data/unisaData';
 import { LoginScreen } from './components/LoginScreen';
 import { StudentSidebar } from './components/StudentSidebar';
 import { StudentHeader } from './components/StudentHeader';
@@ -26,6 +27,7 @@ import { Sparkles, X } from 'lucide-react';
 
 export function App() {
   const [role, setRole] = useState<Role | null>(null);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>(CURRENT_STUDENT);
   const [studentScreen, setStudentScreen] = useState<StudentScreen>('overview');
   const [selectedModuleCode, setSelectedModuleCode] = useState<string>('CS204');
   const [isSaluluOpen, setIsSaluluOpen] = useState(false);
@@ -46,9 +48,16 @@ export function App() {
     }, 4000);
   };
 
-  const handleLogin = (selectedRole: Role, destinationPortal?: string) => {
+  const handleLogin = (
+    selectedRole: Role,
+    destinationPortal?: string,
+    customProfile?: StudentProfile
+  ) => {
     setRole(selectedRole);
     if (selectedRole === 'student') {
+      if (customProfile) {
+        setStudentProfile(customProfile);
+      }
       // Auto-trigger POPI Act data protection consent modal if not previously completed
       try {
         const existingConsent = localStorage.getItem('unisa_popi_consent_v1');
@@ -65,7 +74,11 @@ export function App() {
 
       if (destinationPortal === 'myModules') {
         setStudentScreen('modules');
-        showToast('Authenticated into myModules LMS via UNISA Single Sign-On.');
+        showToast(
+          `Authenticated into myModules LMS via UNISA Single Sign-On as ${
+            customProfile?.name || 'Student'
+          }.`
+        );
       } else if (destinationPortal === 'myAdmin') {
         setStudentScreen('progress');
         showToast('Authenticated into myAdmin Student Records & Examination portal.');
@@ -74,7 +87,9 @@ export function App() {
         showToast('Authenticated into UNISA Graduate School of Business Leadership (SBL).');
       } else {
         setStudentScreen('overview');
-        showToast('Welcome to myUNISA Learning Portal.');
+        showToast(
+          `Welcome to myUNISA Learning Portal, ${customProfile?.name || 'Student'}.`
+        );
       }
     } else {
       showToast('Authenticated as Dr. Elena Vasquez · Allocated to Lecturer Attendance & CS204 Portal.');
@@ -124,6 +139,7 @@ export function App() {
         <div className="flex h-screen w-screen overflow-hidden">
           <StudentSidebar
             currentScreen={studentScreen}
+            userProfile={studentProfile}
             onNavigate={(s) => {
               setStudentScreen(s);
               setIsMobileSidebarOpen(false);
@@ -147,6 +163,7 @@ export function App() {
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
               {studentScreen === 'overview' && (
                 <StudentOverviewView
+                  userProfile={studentProfile}
                   onSelectModule={handleModuleSelect}
                   onOpenSchedule={() => setStudentScreen('schedule')}
                   onOpenCalendar={() => setStudentScreen('calendar')}
