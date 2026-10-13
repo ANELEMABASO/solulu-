@@ -439,13 +439,13 @@ export async function authenticateUserWithSupabase(
     };
   }
 
-  // 1. Check Default Demo Student (Maya Chen)
+  // 1. Check Default Demo Student (Mabaso Cele)
   if (cleanId === '67283910' || cleanId.toLowerCase() === '67283910@mylife.unisa.ac.za') {
     return {
       success: true,
       role: 'student',
       studentProfile: {
-        name: 'Maya Chen',
+        name: 'Mabaso Cele',
         studentNumber: '67283910',
         email: '67283910@mylife.unisa.ac.za',
         demoGmail: 'maya.sithole.2024@gmail.com',

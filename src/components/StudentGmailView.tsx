@@ -15,9 +15,6 @@ import {
   Clock,
   ChevronRight,
   Plus,
-  Terminal,
-  ExternalLink,
-  ShieldCheck,
   Tag,
   ArrowLeft,
   Smartphone,
@@ -28,36 +25,36 @@ import {
   MessageSquare,
   Wand2,
 } from 'lucide-react';
-import { mcpGmail, DEMO_STUDENT_GMAIL } from '../services/mcpGmailService';
-import { DemoEmail, EmailReply, McpToolCallLog } from '../types';
+import { DemoEmail, EmailReply } from '../types';
+import { CURRENT_LECTURER } from '../data/unisaData';
 
 interface StudentGmailViewProps {
+  role?: 'student' | 'lecturer';
   onOpenSaluluWithPrompt?: (prompt: string) => void;
   onNavigateToCalendar?: () => void;
 }
 
+// The counterpart uses the same mailbox with the other plus-tag, e.g. name+lecturer@gmail.com.
+const counterpartAddress = (account: string, role: 'student' | 'lecturer') =>
+  account.replace(`+${role}@`, `+${role === 'student' ? 'lecturer' : 'student'}@`);
+
 export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
+  role = 'student',
   onOpenSaluluWithPrompt,
   onNavigateToCalendar,
 }) => {
-  const [emails, setEmails] = useState<DemoEmail[]>(mcpGmail.getEmails());
-  const [selectedEmail, setSelectedEmail] = useState<DemoEmail | null>(emails[0] || null);
+  const [emails, setEmails] = useState<DemoEmail[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<DemoEmail | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showMcpLogs, setShowMcpLogs] = useState(false);
-  const [logs, setLogs] = useState<McpToolCallLog[]>(mcpGmail.getToolLogs());
   const [isSyncing, setIsSyncing] = useState(false);
+  const [gmailAccount, setGmailAccount] = useState('');
+  const [inboxError, setInboxError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [newTo, setNewTo] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [newBody, setNewBody] = useState('');
-  const [newFrom, setNewFrom] = useState('tutor.assistant@unisa.ac.za');
-  const [isTestingAgent, setIsTestingAgent] = useState(false);
-  const [testReport, setTestReport] = useState<{
-    success: boolean;
-    timestamp: string;
-    steps: { name: string; detail: string; status: 'passed' | 'failed' }[];
-  } | null>(null);
-
   // Email Reply state for mobile & desktop
   const [isReplying, setIsReplying] = useState(false);
   const [replyBody, setReplyBody] = useState('');
@@ -65,41 +62,59 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
   const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
   const [isAiGeneratingDraft, setIsAiGeneratingDraft] = useState(false);
 
-  const mcpStatus = mcpGmail.getMcpStatus();
-  const unreadCount = mcpGmail.getUnreadCount();
+  const mcpStatus = { lastSync: new Date().toLocaleTimeString() };
+  const unreadCount = emails.filter((email) => email.isUnread).length;
 
   useEffect(() => {
-    const unsubscribe = mcpGmail.subscribe(() => {
-      const freshEmails = mcpGmail.getEmails();
-      setEmails(freshEmails);
-      setLogs(mcpGmail.getToolLogs());
-      // Refresh current selectedEmail if updated with new reply
-      if (selectedEmail) {
-        const updatedSelected = freshEmails.find((e) => e.id === selectedEmail.id);
-        if (updatedSelected) {
-          setSelectedEmail(updatedSelected);
-        }
-      }
-    });
-    return unsubscribe;
-  }, [selectedEmail]);
+    void refreshInbox();
+    fetch(`/api/gmail/status?role=${role}`)
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not connect to Gmail.');
+        setGmailAccount(result.account);
+        setNewTo(counterpartAddress(result.account, role));
+      })
+      .catch((error) => setInboxError(error instanceof Error ? error.message : 'Could not connect to Gmail.'));
+  }, []);
 
-  const handleSyncMcp = async () => {
+  const refreshInbox = async (query = '') => {
     setIsSyncing(true);
-    await mcpGmail.executeMcpTool('gmail.list_messages', {
-      account: DEMO_STUDENT_GMAIL,
-      query: searchQuery,
-    });
-    setIsSyncing(false);
+    setInboxError(null);
+    try {
+      const params = new URLSearchParams({ role });
+      if (query) params.set('q', query);
+      const response = await fetch(`/api/gmail/messages?${params}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not load the Gmail inbox.');
+      const freshEmails = result.messages as DemoEmail[];
+      setEmails(freshEmails);
+      setSelectedEmail((current) =>
+        current ? freshEmails.find((email) => email.id === current.id) || current : freshEmails[0] || null
+      );
+    } catch (error) {
+      setInboxError(error instanceof Error ? error.message : 'Could not load the Gmail inbox.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleSelectEmail = (email: DemoEmail) => {
+  const handleSyncMcp = async () => {
+    await refreshInbox(searchQuery);
+  };
+
+  const handleSelectEmail = async (email: DemoEmail) => {
     setSelectedEmail(email);
     setIsReplying(false);
     setReplyBody('');
     setReplySuccessMessage(null);
-    if (email.isUnread) {
-      mcpGmail.markAsRead(email.id);
+    setInboxError(null);
+    try {
+      const response = await fetch(`/api/gmail/messages/${encodeURIComponent(email.id)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not load this message.');
+      setSelectedEmail(result as DemoEmail);
+    } catch (error) {
+      setInboxError(error instanceof Error ? error.message : 'Could not load this message.');
     }
   };
 
@@ -121,20 +136,15 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
     setIsReplying(true);
 
     let draftContent = '';
-    if (selectedEmail.subject.toLowerCase().includes('feedback') || selectedEmail.subject.toLowerCase().includes('assignment')) {
-      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you very much for reviewing my assignment and for the detailed, constructive feedback. I am glad that the implementation met the distinction standard.\n\nI would be delighted to attend your academic consultation session on Tuesday at 14:00 (Room C1.08) to discuss preparing for the upcoming semester examination.\n\nKind regards,\nMaya Chen\nStudent Number: 67283910\nSent from myUNISA Mobile`;
+    if (role === 'lecturer') {
+      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you for your message. I have reviewed it and will follow up with you shortly. You are welcome to attend my consultation session if you would like to discuss this further.\n\nKind regards,\n${CURRENT_LECTURER.name}\nCS204 Lecturer, UNISA`;
+    } else if (selectedEmail.subject.toLowerCase().includes('feedback') || selectedEmail.subject.toLowerCase().includes('assignment')) {
+      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you very much for reviewing my assignment and for the detailed, constructive feedback. I am glad that the implementation met the distinction standard.\n\nI would be delighted to attend your academic consultation session on Tuesday at 14:00 (Room C1.08) to discuss preparing for the upcoming semester examination.\n\nKind regards,\nMabaso Cele\nStudent Number: 67283910\nSent from myUNISA Mobile`;
     } else if (selectedEmail.category === 'exams') {
-      draftContent = `Dear UNISA Examinations Directorate,\n\nI acknowledge receipt of the final May/June 2026 examination timetable for CS204 and CS201. I have recorded the dates on my academic calendar and will complete the online mock proctoring verification ahead of the deadline.\n\nThank you for the notification.\n\nKind regards,\nMaya Chen (67283910)\nSent from myUNISA Mobile`;
+      draftContent = `Dear UNISA Examinations Directorate,\n\nI acknowledge receipt of the final May/June 2026 examination timetable for CS204 and CS201. I have recorded the dates on my academic calendar and will complete the online mock proctoring verification ahead of the deadline.\n\nThank you for the notification.\n\nKind regards,\nMabaso Cele (67283910)\nSent from myUNISA Mobile`;
     } else {
-      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you for this update. I have reviewed the details and will follow up accordingly.\n\nKind regards,\nMaya Chen\nUNISA Student No: 67283910\nSent from myUNISA Mobile`;
+      draftContent = `Dear ${selectedEmail.fromName},\n\nThank you for this update. I have reviewed the details and will follow up accordingly.\n\nKind regards,\nMabaso Cele\nUNISA Student No: 67283910\nSent from myUNISA Mobile`;
     }
-
-    // Call MCP create_draft_reply tool
-    await mcpGmail.executeMcpTool('gmail.create_draft_reply', {
-      to: selectedEmail.from,
-      subject: selectedEmail.subject,
-      body: draftContent,
-    });
 
     setReplyBody(draftContent);
     setIsAiGeneratingDraft(false);
@@ -143,173 +153,63 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
   const handleSendReply = async (device: 'mobile' | 'web' = 'mobile') => {
     if (!selectedEmail || !replyBody.trim()) return;
     setIsSendingReply(true);
-
-    // Call MCP send_reply tool
-    await mcpGmail.executeMcpTool('gmail.send_reply', {
-      messageId: selectedEmail.id,
-      body: replyBody.trim(),
-      device,
-      isAiGenerated: false,
-    });
-
-    setIsSendingReply(false);
-    setReplySuccessMessage(
-      `Response successfully sent to ${selectedEmail.fromName} via ${
-        device === 'mobile' ? 'Mobile Phone' : 'Web'
-      }!`
-    );
-    setReplyBody('');
-    setIsReplying(false);
-
-    setTimeout(() => {
-      setReplySuccessMessage(null);
-    }, 4500);
-  };
-
-  const handleToggleStar = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    mcpGmail.toggleStar(id);
+    setInboxError(null);
+    try {
+      const response = await fetch('/api/gmail/replies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: selectedEmail.id, body: replyBody.trim(), role }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Gmail could not send this reply.');
+      setReplySuccessMessage(`Email sent successfully to ${result.to} via ${device === 'mobile' ? 'Mobile Phone' : 'Web'}.`);
+      setReplyBody('');
+      setIsReplying(false);
+      window.setTimeout(() => setReplySuccessMessage(null), 4500);
+    } catch (error) {
+      setInboxError(error instanceof Error ? error.message : 'Gmail could not send this reply.');
+    } finally {
+      setIsSendingReply(false);
+    }
   };
 
   const handleAskAgentToRead = () => {
     if (onOpenSaluluWithPrompt) {
-      onOpenSaluluWithPrompt('Read and summarize my student Gmail inbox using the MCP Gmail tool.');
+      const context = emails
+        .map((email) => `From: ${email.fromName} <${email.from}>\nSubject: ${email.subject}\nPreview: ${email.snippet}`)
+        .join('\n\n');
+      onOpenSaluluWithPrompt(`Summarize these messages currently loaded from my real Gmail inbox:\n\n${context}`);
     }
   };
 
   const handleAskAgentAboutEmail = (email: DemoEmail) => {
     if (onOpenSaluluWithPrompt) {
       onOpenSaluluWithPrompt(
-        `Please use the MCP Gmail tool to analyze the email from "${email.fromName}" regarding "${email.subject}" and suggest next steps.`
+        `Analyze this Gmail message from "${email.fromName}" regarding "${email.subject}" and suggest next steps:\n\n${email.body}`
       );
     }
   };
 
-  const handleRunAgentEmailTest = async () => {
-    setIsTestingAgent(true);
-    const steps: { name: string; detail: string; status: 'passed' | 'failed' }[] = [];
-
-    try {
-      // Step 1: Execute gmail.list_messages via MCP
-      const listRes = await mcpGmail.executeMcpTool('gmail.list_messages', {
-        account: DEMO_STUDENT_GMAIL,
-        query: '',
-      });
-      if (listRes.success && listRes.data?.total >= 4) {
-        steps.push({
-          name: '1. Autonomous Inbox Discovery (gmail.list_messages)',
-          detail: `Discovered ${listRes.data.total} messages in ${DEMO_STUDENT_GMAIL} via JSON-RPC stdio.`,
-          status: 'passed',
-        });
-      } else {
-        steps.push({
-          name: '1. Autonomous Inbox Discovery',
-          detail: 'Failed to retrieve inbox messages.',
-          status: 'failed',
-        });
-      }
-
-      // Step 2: Read Dr. Vasquez's feedback email detail via MCP
-      const vasquezEmail = emails.find((e) => e.from.includes('vasquez')) || emails[0];
-      const detailRes = await mcpGmail.executeMcpTool('gmail.get_message_detail', {
-        messageId: vasquezEmail.id,
-      });
-      const has84Percent = detailRes.data?.body?.includes('84%');
-      const hasConsultation = detailRes.data?.body?.includes('Tuesday');
-      if (detailRes.success && has84Percent && hasConsultation) {
-        steps.push({
-          name: '2. Deep Reading of Grading Feedback (gmail.get_message_detail)',
-          detail: `Agent parsed Dr. Vasquez's email: accurately extracted 84% grade (Distinction) and Tuesday consultation session.`,
-          status: 'passed',
-        });
-      } else {
-        steps.push({
-          name: '2. Deep Reading of Grading Feedback',
-          detail: 'Could not extract grading marks from email payload.',
-          status: 'failed',
-        });
-      }
-
-      // Step 3: Summarize Unread Threads via MCP
-      const summaryRes = await mcpGmail.executeMcpTool('gmail.summarize_unread_threads', {
-        account: DEMO_STUDENT_GMAIL,
-      });
-      if (summaryRes.success && summaryRes.data?.unreadCount > 0) {
-        steps.push({
-          name: '3. Exam Schedule Extraction (gmail.summarize_unread_threads)',
-          detail: `Identified ${summaryRes.data.unreadCount} unread academic threads, including UNISA CS204 Final Exam on 28 May 2026.`,
-          status: 'passed',
-        });
-      } else {
-        steps.push({
-          name: '3. Exam Schedule Extraction',
-          detail: 'Failed to generate unread thread summary.',
-          status: 'failed',
-        });
-      }
-
-      // Step 4: Autonomous Draft Creation via MCP
-      const draftRes = await mcpGmail.executeMcpTool('gmail.create_draft_reply', {
-        to: 'e.vasquez@unisa.ac.za',
-        subject: 'Re: CS204: Feedback on Assignment 2 & Consultation Invitation',
-        body: 'Thank you Dr. Vasquez. I will attend the consultation on Tuesday at 14:00.',
-      });
-      if (draftRes.success && draftRes.data?.status === 'DRAFT_CREATED') {
-        steps.push({
-          name: '4. Autonomous Draft Generation (gmail.create_draft_reply)',
-          detail: `Draft reply prepared and saved to student mailbox for Dr. Elena Vasquez.`,
-          status: 'passed',
-        });
-      } else {
-        steps.push({
-          name: '4. Autonomous Draft Generation',
-          detail: 'Failed to create draft.',
-          status: 'failed',
-        });
-      }
-
-      setTestReport({
-        success: steps.every((s) => s.status === 'passed'),
-        timestamp: new Date().toLocaleTimeString(),
-        steps,
-      });
-    } catch (err: any) {
-      steps.push({
-        name: 'Execution Exception',
-        detail: err.message || 'Error executing test suite',
-        status: 'failed',
-      });
-      setTestReport({
-        success: false,
-        timestamp: new Date().toLocaleTimeString(),
-        steps,
-      });
-    } finally {
-      setIsTestingAgent(false);
-    }
-  };
-
-  const handleCreateTestEmail = (e: React.FormEvent) => {
+  const handleCreateTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubject.trim() || !newBody.trim()) return;
-
-    const created = mcpGmail.addEmail({
-      from: newFrom,
-      fromName: newFrom.includes('tutor') ? 'UNISA CS204 Lab Tutor' : 'Academic Department',
-      to: DEMO_STUDENT_GMAIL,
-      subject: newSubject,
-      snippet: newBody.slice(0, 100) + '...',
-      body: newBody,
-      isUnread: true,
-      category: 'academic',
-      tags: ['New Alert', 'Lab Update'],
-      mcpActionSuggested: 'Review newly received student email notice',
-    });
-
-    setSelectedEmail(created);
-    setIsComposeOpen(false);
-    setNewSubject('');
-    setNewBody('');
+    if (!newTo.trim() || !newSubject.trim() || !newBody.trim()) return;
+    setInboxError(null);
+    try {
+      const response = await fetch('/api/gmail/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: newTo.trim(), subject: newSubject.trim(), body: newBody.trim(), role }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Gmail could not send this email.');
+      setActionMessage(`Email sent successfully to ${result.to}.`);
+      setIsComposeOpen(false);
+      setNewSubject('');
+      setNewBody('');
+      window.setTimeout(() => setActionMessage(null), 5000);
+    } catch (error) {
+      setInboxError(error instanceof Error ? error.message : 'Gmail could not send this email.');
+    }
   };
 
   const filteredEmails = emails.filter((email) => {
@@ -331,7 +231,20 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* ── Top MCP Status & Demo Email Header ── */}
+      {(inboxError || actionMessage) && (
+        <div className={`rounded-lg border p-3 text-sm ${inboxError ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <span>{inboxError || actionMessage}</span>
+            {inboxError && (
+              <button onClick={() => setInboxError(null)} className="font-bold" aria-label="Dismiss error">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Gmail connection status ── */}
       <div className="bg-white rounded-xl p-5 border border-[#E0E0E0] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -340,21 +253,19 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-[#333333]">Student Demo Gmail Account</h2>
+                <h2 className="text-lg font-bold text-[#333333]">Gmail Inbox</h2>
                 <span className="bg-[#EA4335] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Google Workspace
+                  Live Gmail
                 </span>
               </div>
               <p className="text-xs text-[#666666] flex items-center gap-1.5 mt-0.5">
-                <span className="font-semibold text-[#111111]">{DEMO_STUDENT_GMAIL}</span>
-                <span className="text-[#999999]">·</span>
-                <span>Linked to Maya Chen (67283910)</span>
+                <span className="font-semibold text-[#111111]">{gmailAccount || 'Connecting to Gmail...'}</span>
               </p>
             </div>
           </div>
         </div>
 
-        {/* MCP Connection Live Badge */}
+        {/* Gmail connection badge */}
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="bg-[#F0FDF4] border border-[#BBF7D0] px-3 py-2 rounded-lg flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
@@ -363,13 +274,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             </span>
             <div className="text-left">
               <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                <span>Model Context Protocol (MCP) Bridge</span>
+                <span>Google Gmail API</span>
                 <span className="text-[9px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-extrabold">
-                  ACTIVE
+                  {gmailAccount ? 'CONNECTED' : 'CONNECTING'}
                 </span>
               </div>
               <p className="text-[10px] text-emerald-600">
-                Agent can read, search & draft via JSON-RPC stdio
+                Inbox read and email send are server-side
               </p>
             </div>
           </div>
@@ -379,65 +290,11 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             className="bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold px-3.5 py-2.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#FBBF24]" />
-            <span>Ask Solulu to Read via MCP</span>
+            <span>Ask Solulu About Inbox</span>
           </button>
 
-          <button
-            onClick={() => setShowMcpLogs(!showMcpLogs)}
-            className="bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#333333] border border-[#D5D5D5] text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center gap-1.5 transition-colors"
-            title="Inspect MCP JSON-RPC Activity"
-          >
-            <Terminal className="w-3.5 h-3.5 text-[#666666]" />
-            <span>MCP Logs ({logs.length})</span>
-          </button>
         </div>
       </div>
-
-      {/* ── MCP Tool Logs Drawer (Expandable) ── */}
-      {showMcpLogs && (
-        <div className="bg-[#1E1E1E] text-white rounded-xl p-4 border border-[#333333] shadow-md font-mono text-xs space-y-2.5 animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-[#333333] pb-2">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-emerald-400" />
-              <span className="font-bold text-emerald-400">MCP JSON-RPC Tool Activity Stream</span>
-              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-[#AAAAAA]">
-                Server: @google/mcp-server-gmail
-              </span>
-            </div>
-            <button
-              onClick={() => setShowMcpLogs(false)}
-              className="text-[#888888] hover:text-white text-xs"
-            >
-              ✕ Close
-            </button>
-          </div>
-
-          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-            {logs.length === 0 ? (
-              <p className="text-gray-500 italic">No tool calls recorded yet. Ask Solulu Elevate to read emails to trigger MCP tools.</p>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="p-2 rounded bg-white/5 border border-white/10 flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-emerald-400 font-bold">{log.toolName}</span>
-                      <span className="text-[10px] text-gray-400">{log.timestamp}</span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-semibold">
-                        {log.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-gray-300 mt-1">{log.responsePreview}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Params: {JSON.stringify(log.parameters)}</p>
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-sans">
-                    {log.resultCount !== undefined ? `${log.resultCount} items` : ''}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Main Gmail Interface Layout ── */}
       <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[580px]">
@@ -450,7 +307,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
             className="w-full mb-3 bg-[#DC2626] hover:bg-[#B91C1C] text-white py-2.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Send Test Email</span>
+            <span>Compose Email</span>
           </button>
 
           <nav className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
@@ -548,7 +405,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
           <div className="mt-auto pt-4 border-t border-[#EAEAEA] hidden md:block">
             <div className="p-3 bg-white rounded-lg border border-[#E0E0E0] text-[11px] space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-[#333333]">MCP Sync</span>
+                <span className="font-bold text-[#333333]">Gmail Sync</span>
                 <button
                   onClick={handleSyncMcp}
                   disabled={isSyncing}
@@ -559,7 +416,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                 </button>
               </div>
               <p className="text-[10px] text-[#777777]">
-                Last synced via MCP JSON-RPC at {mcpStatus.lastSync}
+                Last checked at {mcpStatus.lastSync}
               </p>
             </div>
           </div>
@@ -587,7 +444,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
           <div className="flex-1 overflow-y-auto divide-y divide-[#EAEAEA] bg-[#FAFAFA]">
             {filteredEmails.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#888888]">
-                No emails found matching your filter.
+                {isSyncing ? 'Loading inbox...' : 'No emails found matching your filter.'}
               </div>
             ) : (
               filteredEmails.map((email) => {
@@ -620,16 +477,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[10px] text-[#888888]">{email.time}</span>
-                        <button
-                          onClick={(e) => handleToggleStar(e, email.id)}
-                          className="text-[#CCCCCC] hover:text-amber-500 p-0.5"
-                        >
+                        <span title={email.isStarred ? 'Starred in Gmail' : undefined} className="p-0.5">
                           <Star
                             className={`w-3.5 h-3.5 ${
                               email.isStarred ? 'fill-amber-400 text-amber-400' : ''
                             }`}
                           />
-                        </button>
+                        </span>
                       </div>
                     </div>
 
@@ -730,17 +584,13 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                     <span className="text-[11px] sm:text-xs text-[#888888] font-medium whitespace-nowrap">
                       {selectedEmail.date} at {selectedEmail.time}
                     </span>
-                    <button
-                      onClick={(e) => handleToggleStar(e, selectedEmail.id)}
-                      className="p-1.5 text-gray-400 hover:text-amber-500 rounded-lg hover:bg-gray-100"
-                      title="Star this email"
-                    >
+                    <span className="p-1.5 text-gray-400" title={selectedEmail.isStarred ? 'Starred in Gmail' : undefined}>
                       <Star
                         className={`w-4 h-4 ${
                           selectedEmail.isStarred ? 'fill-amber-400 text-amber-400' : ''
                         }`}
                       />
-                    </button>
+                    </span>
                   </div>
                 </div>
 
@@ -888,7 +738,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                     />
                     <div className="flex items-center justify-between pt-2">
                       <span className="text-[10px] text-slate-500">
-                        Sending from {DEMO_STUDENT_GMAIL}
+                        Sending from {gmailAccount || 'connected Gmail account'}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -949,21 +799,21 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
               <Mail className="w-12 h-12 text-[#CCCCCC] mb-2" />
               <p className="text-sm font-semibold">Select an email to view full academic details</p>
               <p className="text-xs text-[#AAAAAA] mt-1">
-                Connected to Model Context Protocol (MCP) Gmail Server
+                Your real Gmail inbox is connected through the local server
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Send Test Email Modal ── */}
+      {/* ── Compose Gmail message ── */}
       {isComposeOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-5 shadow-2xl border border-[#E0E0E0] space-y-4 animate-scaleUp">
             <div className="flex items-center justify-between border-b border-[#EAEAEA] pb-3">
               <div className="flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[#DC2626]" />
-                <h3 className="text-sm font-bold text-[#333333]">Inject New Student Academic Email</h3>
+                <h3 className="text-sm font-bold text-[#333333]">Compose Email</h3>
               </div>
               <button
                 onClick={() => setIsComposeOpen(false)}
@@ -973,35 +823,32 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
               </button>
             </div>
 
+            {inboxError && (
+              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                {inboxError}
+              </div>
+            )}
+
             <form onSubmit={handleCreateTestEmail} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-[#555555] block mb-1">From:</label>
-                <select
-                  value={newFrom}
-                  onChange={(e) => setNewFrom(e.target.value)}
-                  className="w-full text-xs p-2 rounded-lg border border-[#D5D5D5] bg-[#FAFAFA]"
-                >
-                  <option value="tutor.assistant@unisa.ac.za">Dr. James Park &lt;jpark@unisa.ac.za&gt; (CS201)</option>
-                  <option value="tutor.computing@unisa.ac.za">CS204 Head Tutor &lt;tutor.computing@unisa.ac.za&gt;</option>
-                  <option value="dean.science@unisa.ac.za">Dean of Science &lt;dean.science@unisa.ac.za&gt;</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-[#555555] block mb-1">To (Student Gmail):</label>
+                <label className="text-[11px] font-bold text-[#555555] block mb-1">To:</label>
                 <input
-                  type="text"
-                  disabled
-                  value={DEMO_STUDENT_GMAIL}
-                  className="w-full text-xs p-2 rounded-lg border border-[#D5D5D5] bg-[#EFEFEF] text-[#666666]"
+                  type="email"
+                  value={newTo}
+                  onChange={(e) => setNewTo(e.target.value)}
+                  className="w-full text-xs p-2 rounded-lg border border-[#D5D5D5]"
+                  required
                 />
+                <p className="text-[10px] text-[#777777] mt-1">
+                  Sending is limited to the addresses in the server's EMAIL_ALLOWED_RECIPIENTS setting.
+                </p>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-[#555555] block mb-1">Subject:</label>
                 <input
                   type="text"
-                  placeholder="e.g. CS204 Lab 4 Code Review & Consultation"
+                  placeholder="Email subject"
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
                   className="w-full text-xs p-2 rounded-lg border border-[#D5D5D5]"
@@ -1013,7 +860,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                 <label className="text-[11px] font-bold text-[#555555] block mb-1">Email Body:</label>
                 <textarea
                   rows={4}
-                  placeholder="Enter academic message details..."
+                  placeholder="Write your email..."
                   value={newBody}
                   onChange={(e) => setNewBody(e.target.value)}
                   className="w-full text-xs p-2 rounded-lg border border-[#D5D5D5]"
@@ -1031,10 +878,11 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs flex items-center gap-1.5"
+                  disabled={!gmailAccount || isSendingReply}
+                  className="bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-slate-300 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Receive in Student Inbox</span>
+                  <span>{gmailAccount ? 'Send Email' : 'Connecting...'}</span>
                 </button>
               </div>
             </form>

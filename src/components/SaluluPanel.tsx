@@ -55,7 +55,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
   const getInitialMessage = (currentRole: 'student' | 'lecturer'): string => {
     if (currentRole === 'student') {
       return (
-        "Dumelang Maya! I am **Solulu Elevate**, your autonomous UNISA AI Academic Assistant 🤖.\n\n" +
+        "Dumelang Mabaso! I am **Solulu Elevate**, your autonomous UNISA AI Academic Assistant 🤖.\n\n" +
         "Here is what I can assist you with:\n" +
         "1. **Detect student engagement on your modules** — Real-time tracking of lecture attendance, practical submissions, and online LMS interaction (currently 92% in CS204).\n" +
         "2. **Notify you if you are at risk of failing the module or if you are doing well** — Continuous assessment monitoring and proactive performance warnings.\n" +
@@ -341,7 +341,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
           mcpGmail.executeMcpTool('gmail.create_draft_reply', {
             to: 'e.vasquez@unisa.ac.za',
             subject: 'Re: CS204: Feedback on Assignment 2 (Graph Traversal & AVL Trees) & Consultation Invitation',
-            body: 'Dear Dr. Vasquez,\n\nThank you very much for grading my Assignment 2 and for the constructive feedback on asymptotic complexity proofs. I am thrilled with the 84% result.\n\nI would be delighted to attend your consultation session this Tuesday at 14:00 in Room C1.08 to review AVL amortized bounds and prepare for the 28 May final exam.\n\nSincerely,\nMaya Chen (67283910)',
+            body: 'Dear Dr. Vasquez,\n\nThank you very much for grading my Assignment 2 and for the constructive feedback on asymptotic complexity proofs. I am thrilled with the 84% result.\n\nI would be delighted to attend your consultation session this Tuesday at 14:00 in Room C1.08 to review AVL amortized bounds and prepare for the 28 May final exam.\n\nSincerely,\nMabaso Cele (67283910)',
           });
 
           reply =
@@ -353,7 +353,7 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
             "Dear Dr. Vasquez,\n\n" +
             "Thank you very much for grading my Assignment 2 and for the constructive feedback on asymptotic complexity proofs. I am thrilled with the 84% result.\n\n" +
             "I would be delighted to attend your consultation session this Tuesday at 14:00 in Room C1.08 to review AVL amortized bounds and prepare for the 28 May final exam.\n\n" +
-            "Sincerely,\nMaya Chen (67283910)\n" +
+            "Sincerely,\nMabaso Cele (67283910)\n" +
             "```\n\n" +
             "The draft has been saved to your student Gmail account. You can review it directly in the Demo Gmail screen or send it!";
 

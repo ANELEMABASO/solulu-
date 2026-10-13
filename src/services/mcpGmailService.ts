@@ -9,8 +9,8 @@ const INITIAL_EMAILS: DemoEmail[] = [
     fromName: 'Dr. Elena Vasquez',
     to: DEMO_STUDENT_GMAIL,
     subject: 'CS204: Feedback on Assignment 2 (Graph Traversal & AVL Trees) & Consultation Invitation',
-    snippet: 'Dear Maya, I reviewed your AVL tree balance factors and Dijkstra shortest-path implementation. Outstanding work! You achieved 84%...',
-    body: `Dear Maya,
+    snippet: 'Dear Mabaso, I reviewed your AVL tree balance factors and Dijkstra shortest-path implementation. Outstanding work! You achieved 84%...',
+    body: `Dear Mabaso,
 
 I have finished grading your submission for CS204 Assignment 2 (AVL Tree Rotations & Dijkstra Graph Algorithms). 
 
@@ -42,7 +42,7 @@ School of Computing, UNISA`,
     to: DEMO_STUDENT_GMAIL,
     subject: 'URGENT: Official May/June 2026 Examination Timetable Released for CS204 & CS201',
     snippet: 'Please note that the final examination timetable for Semester 1, 2026 has been published. CS204 Examination is scheduled for 28 May 2026...',
-    body: `Dear Student (Maya Chen / 67283910),
+    body: `Dear Student (Mabaso Cele / 67283910),
 
 Please note that the final Semester 1, 2026 Examination Timetable has been officially released on the myUNISA Academic Administration portal.
 
@@ -76,7 +76,7 @@ University of South Africa`,
     to: DEMO_STUDENT_GMAIL,
     subject: 'Attendance Verified: Science Campus Lab Practical (100% Cumulative Rate)',
     snippet: 'Your attendance for the CS204 Trees Lab Practical has been verified and registered on Supabase. Your cumulative attendance is 100%...',
-    body: `Dumelang Maya,
+    body: `Dumelang Mabaso,
 
 Your academic attendance record has been processed and safely synced with the UNISA Supabase database:
 - Session: Trees Lab Practical & AVL Rotations Prep
@@ -246,7 +246,7 @@ class McpGmailService {
     const newReply: EmailReply = {
       id: `reply-${Date.now()}`,
       from: DEMO_STUDENT_GMAIL,
-      fromName: 'Maya Chen (Student 67283910)',
+      fromName: 'Mabaso Cele (Student 67283910)',
       to: targetEmail.from,
       body: reply.body,
       date: new Date().toISOString().split('T')[0],

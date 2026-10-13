@@ -40,6 +40,7 @@ import {
   Database,
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { StudentGmailView } from './StudentGmailView';
 
 interface LecturerPortalProps {
   onLogout: () => void;
@@ -72,7 +73,7 @@ const DATABASE_STUDENTS: DatabaseRecord[] = [
   },
   {
     id: 'db-2',
-    name: 'Maya Chen',
+    name: 'Mabaso Cele',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
     score: '92/100',
     submitted: '12/10/26 - 08:30 PM',
@@ -229,6 +230,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     { id: 'calendar' as LecturerScreen, label: 'Calendar', icon: CalendarIcon },
     { id: 'exam' as LecturerScreen, label: 'Exam', icon: FileText },
     { id: 'result' as LecturerScreen, label: 'Result', icon: BarChart2 },
+    { id: 'messages' as LecturerScreen, label: 'Messages', icon: Mail },
   ];
 
   return (
@@ -1100,6 +1102,14 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* ── MESSAGES: lecturer Gmail inbox ── */}
+            {screen === 'messages' && (
+              <StudentGmailView
+                role="lecturer"
+                onOpenSaluluWithPrompt={() => onOpenSalulu()}
+              />
             )}
 
             {/* ── SCREEN 6: EXAM VIEW ── */}

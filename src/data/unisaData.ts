@@ -1,7 +1,7 @@
 import { StudentProfile, LecturerProfile, ModuleItem, StudentAttendanceRecord, MessageThread, BarStatItem, AcademicCalendarEvent } from '../types';
 
 export const CURRENT_STUDENT: StudentProfile = {
-  name: 'Maya Chen',
+  name: 'Mabaso Cele',
   studentNumber: '67283910',
   email: '67283910@mylife.unisa.ac.za',
   demoGmail: 'maya.sithole.2024@gmail.com',
@@ -77,7 +77,7 @@ export const STUDENT_MODULES: ModuleItem[] = [
 export const INITIAL_ATTENDANCE_RECORDS: StudentAttendanceRecord[] = [
   {
     id: 'att-1',
-    name: 'Maya Chen',
+    name: 'Mabaso Cele',
     studentNumber: '67283910',
     module: 'CS204',
     attendancePct: 92,
@@ -179,14 +179,14 @@ export const INITIAL_THREADS: MessageThread[] = [
         id: 'm1',
         sender: 'solulu-elevate',
         senderName: 'Solulu Elevate AI',
-        text: 'Dumelang Maya! I am Solulu Elevate, monitoring your CS204 progress. You have Trees Lab today at 16:00 (Room C1.08). Complete your prep worksheet to maintain your 92% attendance rating!',
+        text: 'Dumelang Mabaso! I am Solulu Elevate, monitoring your CS204 progress. You have Trees Lab today at 16:00 (Room C1.08). Complete your prep worksheet to maintain your 92% attendance rating!',
         time: '11:00 SAST',
         badge: 'Automated Class Check',
       },
       {
         id: 'm2',
         sender: 'student',
-        senderName: 'Maya Chen',
+        senderName: 'Mabaso Cele',
         text: 'Thanks Solulu Elevate! Can you remind me about the AVL rotation balance factor rules?',
         time: '11:15 SAST',
       },
@@ -213,13 +213,13 @@ export const INITIAL_THREADS: MessageThread[] = [
         id: 'mv1',
         sender: 'lecturer',
         senderName: 'Dr. Elena Vasquez',
-        text: 'Hi Maya, I saw via Solulu Elevate\'s attendance digest that you have reviewed the Week 7 self-balancing tree material. Bring your questions to Room C1.08 this afternoon.',
+        text: 'Hi Mabaso, I saw via Solulu Elevate\'s attendance digest that you have reviewed the Week 7 self-balancing tree material. Bring your questions to Room C1.08 this afternoon.',
         time: 'Yesterday 14:10',
       },
       {
         id: 'mv2',
         sender: 'student',
-        senderName: 'Maya Chen',
+        senderName: 'Mabaso Cele',
         text: 'Thank you Dr. Vasquez, see you at 16:00.',
         time: 'Yesterday 15:02',
       },

@@ -665,7 +665,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                       }`}
                     >
                       <GraduationCap className="w-3.5 h-3.5" />
-                      <span>Maya Chen (Student)</span>
+                      <span>Mabaso Cele (Student)</span>
                     </button>
                     <button
                       type="button"
