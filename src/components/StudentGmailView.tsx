@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { DemoEmail, EmailReply } from '../types';
 import { CURRENT_LECTURER } from '../data/unisaData';
+import { readJson } from '../lib/readJson';
 
 interface StudentGmailViewProps {
   role?: 'student' | 'lecturer';
@@ -69,7 +70,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
     void refreshInbox();
     fetch(`/api/gmail/status?role=${role}`)
       .then(async (response) => {
-        const result = await response.json();
+        const result = await readJson(response);
         if (!response.ok) throw new Error(result.error || 'Could not connect to Gmail.');
         setGmailAccount(result.account);
         setNewTo(counterpartAddress(result.account, role));
@@ -84,7 +85,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
       const params = new URLSearchParams({ role });
       if (query) params.set('q', query);
       const response = await fetch(`/api/gmail/messages?${params}`);
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) throw new Error(result.error || 'Could not load the Gmail inbox.');
       const freshEmails = result.messages as DemoEmail[];
       setEmails(freshEmails);
@@ -110,7 +111,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
     setInboxError(null);
     try {
       const response = await fetch(`/api/gmail/messages/${encodeURIComponent(email.id)}`);
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) throw new Error(result.error || 'Could not load this message.');
       setSelectedEmail(result as DemoEmail);
     } catch (error) {
@@ -160,7 +161,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId: selectedEmail.id, body: replyBody.trim(), role }),
       });
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) throw new Error(result.error || 'Gmail could not send this reply.');
       setReplySuccessMessage(`Email sent successfully to ${result.to} via ${device === 'mobile' ? 'Mobile Phone' : 'Web'}.`);
       setReplyBody('');
@@ -200,7 +201,7 @@ export const StudentGmailView: React.FC<StudentGmailViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: newTo.trim(), subject: newSubject.trim(), body: newBody.trim(), role }),
       });
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) throw new Error(result.error || 'Gmail could not send this email.');
       setActionMessage(`Email sent successfully to ${result.to}.`);
       setIsComposeOpen(false);
