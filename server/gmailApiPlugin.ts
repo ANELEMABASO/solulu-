@@ -159,17 +159,58 @@ export function demoStudentRecipient() {
   return roleAddress('student');
 }
 
-async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (error?: Error) => void) {
-  const url = new URL(req.url || '/', 'http://localhost');
-  if (!url.pathname.startsWith('/api/gmail')) {
-    next();
-    return;
-  }
+type GmailRequest = IncomingMessage & { body?: unknown };
 
+const HOSTED_MAX_BODY_CHARS = 5_000;
+const RATE_WINDOW_MS = 10 * 60_000;
+const RATE_MAX_SENDS = 5;
+const sendLog = new Map<string, number[]>();
+
+// Best-effort limit: serverless instances don't share memory, so this only slows down casual abuse.
+function rateLimited(req: IncomingMessage) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const key = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0].trim() ||
+    req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const recent = (sendLog.get(key) || []).filter((time) => now - time < RATE_WINDOW_MS);
+  if (recent.length >= RATE_MAX_SENDS) {
+    sendLog.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  sendLog.set(key, recent);
+  return false;
+}
+
+async function readBody(req: GmailRequest, maxChars: number): Promise<Record<string, unknown>> {
+  let parsed: unknown;
+  if (req.body !== undefined) {
+    parsed = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  } else {
+    let raw = '';
+    for await (const chunk of req) {
+      raw += chunk.toString();
+      if (raw.length > maxChars + 2_000) throw new Error('too_large');
+    }
+    parsed = raw ? JSON.parse(raw) : {};
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('bad_body');
+  return parsed as Record<string, unknown>;
+}
+
+// `hosted` is true on Vercel: send-only, no inbox access, and requests are not limited to localhost.
+export async function handleGmailRequest(req: GmailRequest, res: ServerResponse, hosted = false) {
+  const url = new URL(req.url || '/', 'http://localhost');
   const origin = req.headers.origin;
   const originHost = origin ? new URL(origin).host : '';
   const host = req.headers.host || '';
-  if (!isLoopback(req.socket.remoteAddress) ||
+
+  if (hosted) {
+    if (origin && originHost !== host) {
+      sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
+      return;
+    }
+  } else if (!isLoopback(req.socket.remoteAddress) ||
       !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) ||
       (origin && originHost !== host)) {
     sendJson(res, 403, { error: 'Gmail API is available only from this computer.' });
@@ -181,6 +222,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (e
       getGmailClient();
       const role = parseRole(url.searchParams.get('role'));
       sendJson(res, 200, { account: roleAddress(role), connected: true });
+      return;
+    }
+
+    if (hosted && req.method === 'GET' && url.pathname === '/api/gmail/messages') {
+      sendJson(res, 200, { messages: [] });
+      return;
+    }
+    if (hosted && url.pathname !== '/api/gmail/send') {
+      sendJson(res, 403, { error: 'Reading the inbox and replying are disabled in the online demo. Use Compose to send an email.' });
       return;
     }
 
@@ -226,26 +276,23 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (e
     }
 
     if (req.method === 'POST' && url.pathname === '/api/gmail/send') {
-      let raw = '';
-      for await (const chunk of req) {
-        raw += chunk.toString();
-        if (raw.length > 110_000) {
-          sendJson(res, 413, { error: 'Email is too large.' });
-          return;
-        }
-      }
-      const input = JSON.parse(raw) as { to?: string; subject?: string; body?: string; role?: string };
+      const maxChars = hosted ? HOSTED_MAX_BODY_CHARS : 100_000;
+      const input = await readBody(req, maxChars) as { to?: string; subject?: string; body?: string; role?: string };
       const role = parseRole(input.role);
-      const to = input.to?.trim();
-      const subject = input.subject?.trim();
+      const to = typeof input.to === 'string' ? input.to.trim() : '';
+      const subject = typeof input.subject === 'string' ? input.subject.trim() : '';
       if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) ||
           !getAllowedRecipients().has(to.toLowerCase())) {
         sendJson(res, 403, { error: 'That recipient is not in EMAIL_ALLOWED_RECIPIENTS.' });
         return;
       }
       if (!subject || subject.length > 998 ||
-          typeof input.body !== 'string' || !input.body.trim() || input.body.length > 100_000) {
+          typeof input.body !== 'string' || !input.body.trim() || input.body.length > maxChars) {
         sendJson(res, 400, { error: 'A subject and non-empty email body are required.' });
+        return;
+      }
+      if (hosted && rateLimited(req)) {
+        sendJson(res, 429, { error: 'Too many emails sent. Please wait a few minutes and try again.' });
         return;
       }
       const sent = await sendRoleEmail(gmail, role, to, subject, input.body);
@@ -254,15 +301,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (e
     }
 
     if (req.method === 'POST' && url.pathname === '/api/gmail/replies') {
-      let raw = '';
-      for await (const chunk of req) {
-        raw += chunk.toString();
-        if (raw.length > 110_000) {
-          sendJson(res, 413, { error: 'Reply is too large.' });
-          return;
-        }
-      }
-      const input = JSON.parse(raw) as { messageId?: string; body?: string; role?: string };
+      const input = await readBody(req, 100_000) as { messageId?: string; body?: string; role?: string };
       const role = parseRole(input.role);
       if (!input.messageId || !/^[\w-]+$/.test(input.messageId) ||
           typeof input.body !== 'string' || !input.body.trim() || input.body.length > 100_000) {
@@ -310,6 +349,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (e
     sendJson(res, 404, { error: 'Gmail API endpoint not found.' });
   } catch (error) {
     console.error('Gmail API request failed:', error);
+    if (error instanceof Error && error.message === 'too_large') {
+      sendJson(res, 413, { error: 'Email is too large.' });
+      return;
+    }
+    if (error instanceof SyntaxError || (error instanceof Error && error.message === 'bad_body')) {
+      sendJson(res, 400, { error: 'Invalid request.' });
+      return;
+    }
     if (error && typeof error === 'object' && 'code' in error && error.code === 403 &&
         'message' in error && typeof error.message === 'string' &&
         error.message.includes('insufficient authentication scopes')) {
@@ -329,7 +376,11 @@ export function gmailApiPlugin(): Plugin {
     name: 'solulu-gmail-api',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        void handleRequest(req, res, next);
+        if (!(req.url || '').startsWith('/api/gmail')) {
+          next();
+          return;
+        }
+        void handleGmailRequest(req, res);
       });
     },
   };
