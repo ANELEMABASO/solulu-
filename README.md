@@ -19,11 +19,15 @@ set `GEMINI_API_KEY` in `.env.local`. Keep this key server-side; do not use a
 2. Use `npm run build` as the build command and `dist` as the output directory.
 3. Add `GEMINI_API_KEY` in the Vercel project's server-side environment variables.
    `GEMINI_MODEL` is optional; it defaults to `gemini-3-flash-preview`.
-4. Deploy and test `/api/agent` through the chatbot.
+4. Optional, to send email from the hosted demo, add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+   `GOOGLE_REFRESH_TOKEN`, `EMAIL_FROM` and `EMAIL_ALLOWED_RECIPIENTS` (comma-separated).
+   The hosted demo is send-only: the inbox and replies are disabled, recipients must be in the
+   allow-list, and sends are rate limited. Draft approvals are not available online.
+5. Deploy and test `/api/agent` through the chatbot.
 
-The `api/agent.ts` function serves the chatbot endpoint. Draft creation is disabled
-in the Vercel deployment. Other local development APIs, including Gmail and draft
-approvals, are not part of this Vercel deployment.
+The `api/agent.ts` function serves the chatbot endpoint and `api/gmail/[...path].ts` the
+send-only email endpoint. Draft creation is disabled in the Vercel deployment. The inbox and
+draft approvals only run locally.
 
 ## Demo and data notice
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
+import { readJson } from '../lib/readJson';
 
 interface Draft {
   id: string;
@@ -31,8 +32,8 @@ export const DraftApprovals: React.FC<{ onShowToast: (msg: string) => void }> = 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/drafts');
-      if (!res.ok) throw new Error((await res.json()).error || 'Could not load drafts');
-      setDrafts((await res.json()).drafts);
+      if (!res.ok) throw new Error((await readJson(res)).error || 'Could not load drafts');
+      setDrafts((await readJson(res)).drafts);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load drafts');
@@ -53,7 +54,7 @@ export const DraftApprovals: React.FC<{ onShowToast: (msg: string) => void }> = 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(action === 'approve' ? edits[draft.id] ?? {} : {}),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || 'Request failed');
       onShowToast(action === 'approve' ? `Approved email to ${draft.studentName}` : `Rejected draft for ${draft.studentName}`);
     } catch (err) {
