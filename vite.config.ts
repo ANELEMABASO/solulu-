@@ -1,13 +1,15 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: ['.env.local', '.env'] });
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import { gmailApiPlugin } from './server/gmailApiPlugin.ts';
+import { agentApiPlugin } from './server/agentApiPlugin.ts';
 
 export default defineConfig(() => {
   return {
-    plugins: [gmailApiPlugin(), react(), tailwindcss()],
+    plugins: [gmailApiPlugin(), agentApiPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

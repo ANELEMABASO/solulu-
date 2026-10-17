@@ -10,7 +10,9 @@ $m = [regex]::Match($url, '[?&]code=([^&]+)')
 if (-not $m.Success) { Write-Host 'No code found in that URL. Paste the whole address bar.' -ForegroundColor Red; return }
 $code = [uri]::UnescapeDataString($m.Groups[1].Value)
 
-$secret = (Read-Host 'Paste the client secret').Trim()
+$envFile = Join-Path (Split-Path $PSScriptRoot -Parent) '.env'
+$secret = ((Get-Content $envFile | Where-Object { $_ -like 'GOOGLE_CLIENT_SECRET=*' } | Select-Object -First 1) -replace '^GOOGLE_CLIENT_SECRET=', '').Trim()
+if (-not $secret) { $secret = (Read-Host 'Paste the client secret').Trim() }
 
 try {
   $r = Invoke-RestMethod -Method Post -Uri 'https://oauth2.googleapis.com/token' -Body @{

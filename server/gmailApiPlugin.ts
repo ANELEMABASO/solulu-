@@ -133,6 +133,32 @@ function getAllowedRecipients() {
   return allowed;
 }
 
+function sendRoleEmail(gmail: gmail_v1.Gmail, role: Role, to: string, subject: string, body: string) {
+  const rawMessage = Buffer.from([
+    `From: ${roleAddress(role)}`,
+    `To: ${to}`,
+    `Subject: ${subject.replace(/[\r\n]/g, ' ')}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+    '',
+    body.trim(),
+  ].join('\r\n')).toString('base64url');
+  return gmail.users.messages.send({ userId: 'me', requestBody: { raw: rawMessage } });
+}
+
+// Used by the draft approval flow; recipients must pass the same allow-list as /api/gmail/send.
+export async function sendApprovedEmail(role: Role, to: string, subject: string, body: string) {
+  if (!getAllowedRecipients().has(to.toLowerCase())) {
+    throw new Error('That recipient is not in EMAIL_ALLOWED_RECIPIENTS.');
+  }
+  const sent = await sendRoleEmail(getGmailClient(), role, to, subject, body);
+  return sent.data.id;
+}
+
+export function demoStudentRecipient() {
+  return roleAddress('student');
+}
+
 async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (error?: Error) => void) {
   const url = new URL(req.url || '/', 'http://localhost');
   if (!url.pathname.startsWith('/api/gmail')) {
@@ -222,19 +248,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, next: (e
         sendJson(res, 400, { error: 'A subject and non-empty email body are required.' });
         return;
       }
-      const rawMessage = Buffer.from([
-        `From: ${roleAddress(role)}`,
-        `To: ${to}`,
-        `Subject: ${subject.replace(/[\r\n]/g, ' ')}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-        '',
-        input.body.trim(),
-      ].join('\r\n')).toString('base64url');
-      const sent = await gmail.users.messages.send({
-        userId: 'me',
-        requestBody: { raw: rawMessage },
-      });
+      const sent = await sendRoleEmail(gmail, role, to, subject, input.body);
       sendJson(res, 200, { messageId: sent.data.id, to, subject });
       return;
     }

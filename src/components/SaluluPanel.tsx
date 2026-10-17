@@ -40,6 +40,24 @@ type ActionItem = {
 };
 type TimelineItem = MessageItem | ActionItem;
 
+const AGENT_INTENT = /\b(risk|struggl|fail|attendance|standing|engagement|draft|check-in|sipho|thabo|mabaso|kabelo)/;
+
+async function askAgent(
+  message: string,
+  role: 'student' | 'lecturer',
+): Promise<{ reply: string; toolCalls: { tool: string; args: Record<string, string> }[] } | null> {
+  try {
+    const res = await fetch('/api/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, role }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 let idCounter = 200;
 const getId = () => `item-${++idCounter}`;
 
@@ -142,10 +160,30 @@ export const SaluluPanel: React.FC<SaluluPanelProps> = ({
     setIsTyping(true);
 
     // Simulate smart Solulu Elevate reasoning & channel execution
-    setTimeout(() => {
+    setTimeout(async () => {
       const lower = text.toLowerCase();
       let reply = '';
       const actionsToRun: ActionItem[] = [];
+
+      if (AGENT_INTENT.test(lower)) {
+        const agent = await askAgent(text, role);
+        if (agent) {
+          setTimeline((prev) => [
+            ...prev,
+            { kind: 'msg', id: getId(), role: 'assistant', content: agent.reply, time: now },
+            ...agent.toolCalls.map<ActionItem>((call) => ({
+              kind: 'action',
+              id: getId(),
+              icon: '🔎',
+              label: `Looked up data: ${call.tool}`,
+              detail: JSON.stringify(call.args),
+              channel: 'system',
+            })),
+          ]);
+          setIsTyping(false);
+          return;
+        }
+      }
 
       // ── STUDENT ASSISTANT LOGIC ──
       if (role === 'student') {

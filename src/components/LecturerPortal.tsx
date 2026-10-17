@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { StudentGmailView } from './StudentGmailView';
+import { DraftApprovals } from './DraftApprovals';
 
 interface LecturerPortalProps {
   onLogout: () => void;
@@ -231,6 +232,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     { id: 'exam' as LecturerScreen, label: 'Exam', icon: FileText },
     { id: 'result' as LecturerScreen, label: 'Result', icon: BarChart2 },
     { id: 'messages' as LecturerScreen, label: 'Messages', icon: Mail },
+    { id: 'approvals' as LecturerScreen, label: 'Approvals', icon: CheckCircle2 },
   ];
 
   return (
@@ -1111,6 +1113,9 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                 onOpenSaluluWithPrompt={() => onOpenSalulu()}
               />
             )}
+
+            {/* ── APPROVALS: agent-drafted emails awaiting lecturer sign-off ── */}
+            {screen === 'approvals' && <DraftApprovals onShowToast={onShowToast} />}
 
             {/* ── SCREEN 6: EXAM VIEW ── */}
             {screen === 'exam' && (

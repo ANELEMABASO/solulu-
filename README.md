@@ -1,0 +1,33 @@
+# Elevate Solulu
+
+Academic assistant demo built with React, Vite, and a server-side Gemini API route.
+
+## Run locally
+
+```sh
+npm install
+npm run dev
+```
+
+The app can use its offline demo responses without a Gemini key. To use Gemini,
+set `GEMINI_API_KEY` in `.env.local`. Keep this key server-side; do not use a
+`VITE_` prefix or commit the key.
+
+## Deploy to Vercel
+
+1. Import this repository into Vercel and select the Vite framework preset.
+2. Use `npm run build` as the build command and `dist` as the output directory.
+3. Add `GEMINI_API_KEY` in the Vercel project's server-side environment variables.
+   `GEMINI_MODEL` is optional; it defaults to `gemini-3-flash-preview`.
+4. Deploy and test `/api/agent` through the chatbot.
+
+The `api/agent.ts` function serves the chatbot endpoint. Draft creation is disabled
+in the Vercel deployment. Other local development APIs, including Gmail and draft
+approvals, are not part of this Vercel deployment.
+
+## Demo and data notice
+
+Login and lecturer/student roles are demo-only and are not verified by the server.
+The app uses sample student records. Anyone with a public deployment link may be
+able to use the demo; never enter real student or other confidential data.
+Protect and monitor the Gemini API key and its quota.

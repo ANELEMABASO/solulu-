@@ -20,7 +20,8 @@ export type LecturerScreen =
   | 'result'
   | 'modules'
   | 'grades'
-  | 'messages';
+  | 'messages'
+  | 'approvals';
 export type ModuleTab = 'overview' | 'learning' | 'assignments' | 'grades' | 'resources';
 
 export type CalendarEventType = 'lecture' | 'lab' | 'assignment' | 'exam' | 'tutorial' | 'holiday';
