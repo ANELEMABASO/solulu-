@@ -424,7 +424,19 @@ export async function authenticateUserWithSupabase(
   const cleanPass = secret.trim();
 
   if (role === 'staff') {
-    // Check staff credentials
+    // Real lecturer sign-in through Supabase Auth; the server checks the email against LECTURER_EMAILS.
+    const auth = getSupabase();
+    if (auth && cleanId.includes('@')) {
+      const { error } = await auth.auth.signInWithPassword({ email: cleanId, password: cleanPass });
+      if (!error) return { success: true, role: 'lecturer' };
+      if (!import.meta.env.DEV) {
+        return { success: false, role: 'lecturer', error: 'Invalid staff email or password.' };
+      }
+    } else if (!import.meta.env.DEV) {
+      return { success: false, role: 'lecturer', error: 'Staff sign-in is not available right now.' };
+    }
+
+    // Local demo credentials, development builds only.
     if (cleanId.toLowerCase() === 'evasquez@unisa.ac.za' || cleanId.toLowerCase() === 'lecturer' || cleanId === 'UNISA-STAFF-4821') {
       return { success: true, role: 'lecturer' };
     }

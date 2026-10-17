@@ -18,6 +18,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { dispatchAcademicAlertToSupabase } from '../lib/supabase';
+import { authHeaders } from '../lib/authFetch';
 import { mcpGmail, DEMO_STUDENT_GMAIL } from '../services/mcpGmailService';
 
 export interface SaluluPanelProps {
@@ -49,7 +50,7 @@ async function askAgent(
   try {
     const res = await fetch('/api/agent', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ message, role }),
     });
     return res.ok ? await res.json() : null;

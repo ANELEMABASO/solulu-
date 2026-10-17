@@ -87,7 +87,7 @@ export const TOOLS: ToolDefinition[] = [
       if (!found) return { error: `No student matching "${student}" in ${moduleCode}.` };
       if (!subject?.trim() || !body?.trim()) return { error: 'A subject and body are required.' };
 
-      const { draft, duplicate } = createDraft({
+      const { draft, duplicate } = await createDraft({
         studentNumber: found.studentNumber,
         studentName: found.name,
         moduleCode: moduleCode.toUpperCase(),
@@ -119,9 +119,10 @@ export const TOOLS: ToolDefinition[] = [
       const code = String(moduleCode ?? '').toUpperCase();
       const atRisk = (await ctx.repo.listStudents(code)).filter((s) => s.riskLevel !== 'Low');
 
-      const results = atRisk.map((s) => {
+      const results = [];
+      for (const s of atRisk) {
         const concern = s.reasons[0] ? `${s.reasons[0].replace(/\.$/, '')}.` : `Your attendance is at ${s.attendancePct}%.`;
-        const { draft, duplicate } = createDraft({
+        const { draft, duplicate } = await createDraft({
           studentNumber: s.studentNumber,
           studentName: s.name,
           moduleCode: code,
@@ -132,8 +133,8 @@ export const TOOLS: ToolDefinition[] = [
             `I want to make sure you have the support you need. Please reply to this email or book a consultation with me so we can work out a plan together.\n\n` +
             `Kind regards,\nDr. Elena Vasquez`,
         });
-        return { student: s.name, draftId: draft.id, duplicate };
-      });
+        results.push({ student: s.name, draftId: draft.id, duplicate });
+      }
       return {
         status: 'pending_approval',
         created: results.filter((r) => !r.duplicate).length,

@@ -25,9 +25,21 @@ set `GEMINI_API_KEY` in `.env.local`. Keep this key server-side; do not use a
    allow-list, and sends are rate limited. Draft approvals are not available online.
 5. Deploy and test `/api/agent` through the chatbot.
 
-The `api/agent.ts` function serves the chatbot endpoint and `api/gmail/[...path].ts` the
-send-only email endpoint. Draft creation is disabled in the Vercel deployment. The inbox and
-draft approvals only run locally.
+The `api/agent.ts` function serves the chatbot endpoint, `api/gmail/[...path].ts` the
+send-only email endpoint and `api/drafts/` the approval queue.
+
+### Agent-written emails (lecturers)
+
+The agent can write emails for every at-risk student, which a signed-in lecturer approves
+before anything is sent. To enable this online:
+
+1. Run `supabase/email_drafts.sql` in the Supabase SQL editor.
+2. In Supabase Auth, create a user for the lecturer (email and password).
+3. Add these Vercel environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   (server-side only), `LECTURER_EMAILS` (the lecturer's Auth email), `DRAFT_DELIVERY=live`,
+   plus the Gmail variables from step 4 above and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+4. Sign in as that lecturer. The server verifies the Supabase token, so only emails listed in
+   `LECTURER_EMAILS` can draft or approve. The inbox and replies remain local-only.
 
 ## Demo and data notice
 

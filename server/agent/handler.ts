@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { CURRENT_STUDENT } from '../../src/data/unisaData.ts';
 import { runAgent } from './agent.ts';
+import { authenticateLecturer } from '../auth.ts';
 import { createRepository } from './repository.ts';
 
 const MAX_BODY_BYTES = 10_000;
@@ -8,7 +9,7 @@ const MAX_MESSAGE_CHARS = 1_000;
 const repo = createRepository();
 
 type AgentRequest = IncomingMessage & { body?: unknown };
-type AgentOptions = { allowDrafts?: boolean };
+type AgentOptions = { hosted?: boolean };
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status;
@@ -49,11 +50,17 @@ export async function handleAgentRequest(req: AgentRequest, res: ServerResponse,
       return sendJson(res, 400, { error: 'Invalid message' });
     }
 
+    // The lecturer role (and drafting) is granted only to a verified lecturer, never from the request body.
+    const lecturer = role === 'lecturer' ? await authenticateLecturer(req, options.hosted ?? false) : null;
+    if (role === 'lecturer' && !lecturer) {
+      return sendJson(res, 401, { error: 'Please sign in as a lecturer.' });
+    }
+
     const result = await runAgent(message.trim(), {
-      role: role === 'lecturer' ? 'lecturer' : 'student',
+      role: lecturer ? 'lecturer' : 'student',
       studentNumber: CURRENT_STUDENT.studentNumber,
       repo,
-      allowDrafts: options.allowDrafts,
+      allowDrafts: Boolean(lecturer),
     });
     return sendJson(res, 200, result);
   } catch (err) {
