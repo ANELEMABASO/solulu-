@@ -93,8 +93,20 @@ export async function handleDraftsRequest(req: DraftsRequest, res: ServerRespons
       return sendJson(res, 200, { draft: updated });
     } catch (err) {
       console.error('Draft send failed:', err);
-      const updated = await updateDraft(id, { subject, body, status: 'failed', decidedAt, note: 'Sending failed. Check the server log.' });
-      return sendJson(res, 502, { draft: updated, error: 'Sending failed' });
+      const raw = err instanceof Error ? err.message : String(err);
+      const reason = /invalid_grant/i.test(raw)
+        ? 'Google refresh token is invalid or expired: regenerate GOOGLE_REFRESH_TOKEN.'
+        : /invalid_client|unauthorized_client/i.test(raw)
+          ? 'Google client ID or secret is wrong: check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.'
+          : /not configured/i.test(raw)
+            ? 'Google credentials are missing on the server: set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REFRESH_TOKEN.'
+            : /EMAIL_ALLOWED_RECIPIENTS/.test(raw)
+              ? 'The demo recipient is not allowed: set EMAIL_FROM and add it to EMAIL_ALLOWED_RECIPIENTS.'
+              : /insufficient|scope|403/i.test(raw)
+                ? 'Google token lacks permission to send: re-authorize with the gmail.send scope.'
+                : 'Gmail rejected the send. Check the Vercel function logs.';
+      const updated = await updateDraft(id, { subject, body, status: 'failed', decidedAt, note: `Sending failed. ${reason}` });
+      return sendJson(res, 502, { draft: updated, error: `Sending failed. ${reason}` });
     }
   } catch (err) {
     console.error('Drafts error:', err);
