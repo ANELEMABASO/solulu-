@@ -7,7 +7,6 @@ import { StudentHeader } from './components/StudentHeader';
 import { LecturerPortal } from './components/LecturerPortal';
 import { SaluluPanel } from './components/SaluluPanel';
 import {
-  StudentOverviewView,
   StudentModulesView,
   StudentModuleDetailView,
   StudentScheduleView,
@@ -15,6 +14,7 @@ import {
   StudentMessagesView,
 } from './components/StudentViews';
 import { StudentCalendarView } from './components/StudentCalendarView';
+import { StudentDashboard } from './components/StudentDashboard';
 import { StudentGmailView } from './components/StudentGmailView';
 import {
   LessonModal,
@@ -151,6 +151,20 @@ export function App() {
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
           />
 
+          {studentScreen === 'overview' ? (
+            <StudentDashboard
+              userProfile={studentProfile}
+              onNavigate={(s) => setStudentScreen(s)}
+              onSelectModule={handleModuleSelect}
+              onOpenSalulu={() => setIsSaluluOpen(true)}
+              onOpenPopiModal={() => setIsPopiModalOpen(true)}
+              onOpenLesson={() => setIsLessonModalOpen(true)}
+              onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
+              onLogout={handleLogout}
+              onShowToast={showToast}
+              onToggleMobileMenu={() => setIsMobileSidebarOpen((prev) => !prev)}
+            />
+          ) : (
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <StudentHeader
               onOpenSalulu={() => setIsSaluluOpen(true)}
@@ -162,17 +176,6 @@ export function App() {
             />
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
-              {studentScreen === 'overview' && (
-                <StudentOverviewView
-                  userProfile={studentProfile}
-                  onSelectModule={handleModuleSelect}
-                  onOpenSchedule={() => setStudentScreen('schedule')}
-                  onOpenCalendar={() => setStudentScreen('calendar')}
-                  onOpenLesson={() => setIsLessonModalOpen(true)}
-                  onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
-                />
-              )}
-
               {studentScreen === 'calendar' && (
                 <StudentCalendarView
                   onOpenWorksheet={() => setIsWorksheetModalOpen(true)}
@@ -221,6 +224,7 @@ export function App() {
               )}
             </main>
           </div>
+          )}
         </div>
       )}
 
