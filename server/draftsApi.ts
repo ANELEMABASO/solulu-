@@ -53,11 +53,11 @@ export async function handleDraftsRequest(req: DraftsRequest, res: ServerRespons
 
     const [id, action] = parts;
     if (req.method !== 'POST' || !id || (action !== 'approve' && action !== 'reject')) {
-      return sendJson(res, 404, { error: 'Not found' });
+      return sendJson(res, 404, { error: `Unknown drafts route: ${req.method} /api/drafts/${parts.join('/')}` });
     }
 
     const draft = await getDraft(id);
-    if (!draft) return sendJson(res, 404, { error: 'Draft not found' });
+    if (!draft) return sendJson(res, 404, { error: 'Draft not found in the database. Refresh the page.' });
     if (draft.status !== 'pending') return sendJson(res, 409, { error: `Draft is already ${draft.status}.` });
 
     if (action === 'reject') {
