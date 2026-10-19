@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { authenticateLecturer } from './auth.ts';
+import { authenticateLecturer, explainAuthFailure } from './auth.ts';
 import { claimDraft, getDraft, listDrafts, updateDraft } from './agent/drafts.ts';
 import { demoStudentRecipient, sendApprovedEmail } from './gmailApiPlugin.ts';
 
@@ -33,7 +33,9 @@ async function readJson(req: DraftsRequest): Promise<Record<string, unknown>> {
 export async function handleDraftsRequest(req: DraftsRequest, res: ServerResponse, hosted = false) {
   try {
     const lecturer = await authenticateLecturer(req, hosted);
-    if (!lecturer) return sendJson(res, 401, { error: 'Sign in as a lecturer to manage drafts.' });
+    if (!lecturer) {
+      return sendJson(res, 401, { error: hosted ? await explainAuthFailure(req) : 'Sign in as a lecturer to manage drafts.' });
+    }
 
     const origin = req.headers.origin;
     if (origin && new URL(origin).host !== req.headers.host) {
