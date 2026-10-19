@@ -5,7 +5,7 @@ import { demoStudentRecipient, sendApprovedEmail } from './gmailApiPlugin.ts';
 
 const MAX_BODY_BYTES = 10_000;
 
-type DraftsRequest = IncomingMessage & { body?: unknown };
+type DraftsRequest = IncomingMessage & { body?: unknown; query?: Record<string, string | string[] | undefined> };
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status;
@@ -42,8 +42,12 @@ export async function handleDraftsRequest(req: DraftsRequest, res: ServerRespons
       return sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
     }
 
-    const pathname = new URL(req.url || '/', 'http://localhost').pathname.replace(/^\/api\/drafts/, '');
-    const parts = pathname.split('/').filter(Boolean);
+    const url = new URL(req.url || '/', 'http://localhost');
+    // Vercel's catch-all route can expose the segments as a `path` query value instead of in the URL.
+    const queryPath = req.query?.path ?? url.searchParams.getAll('path');
+    const fromQuery = (Array.isArray(queryPath) ? queryPath : [queryPath]).flatMap((p) => String(p ?? '').split('/')).filter(Boolean);
+    const fromUrl = url.pathname.replace(/^\/api\/drafts/, '').split('/').filter(Boolean);
+    const parts = fromUrl.length > 0 && !fromUrl[0].startsWith('[') ? fromUrl : fromQuery;
 
     if (req.method === 'GET' && parts.length === 0) return sendJson(res, 200, { drafts: await listDrafts() });
 
