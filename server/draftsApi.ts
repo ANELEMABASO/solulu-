@@ -47,7 +47,10 @@ export async function handleDraftsRequest(req: DraftsRequest, res: ServerRespons
     const queryPath = req.query?.path ?? url.searchParams.getAll('path');
     const fromQuery = (Array.isArray(queryPath) ? queryPath : [queryPath]).flatMap((p) => String(p ?? '').split('/')).filter(Boolean);
     const fromUrl = url.pathname.replace(/^\/api\/drafts/, '').split('/').filter(Boolean);
-    const parts = fromUrl.length > 0 && !fromUrl[0].startsWith('[') ? fromUrl : fromQuery;
+    // vercel.json rewrites /api/drafts/:id/:action to /api/drafts?id=…&action=…
+    const qId = url.searchParams.get('id') || (typeof req.query?.id === 'string' ? req.query.id : '');
+    const qAction = url.searchParams.get('action') || (typeof req.query?.action === 'string' ? req.query.action : '');
+    const parts = qId && qAction ? [qId, qAction] : fromUrl.length > 0 && !fromUrl[0].startsWith('[') ? fromUrl : fromQuery;
 
     if (req.method === 'GET' && parts.length === 0) return sendJson(res, 200, { drafts: await listDrafts() });
 
